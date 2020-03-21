@@ -1,0 +1,2 @@
+#define ALGORITHMS_API __declspec(dllexport)
+#define ALGORITHMS_API __declspec(dllimport)

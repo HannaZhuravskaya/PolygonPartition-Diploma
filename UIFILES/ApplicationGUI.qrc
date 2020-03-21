@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/ApplicationGUI">
+        <file>PolygonPartition.ico</file>
+    </qresource>
+</RCC>
