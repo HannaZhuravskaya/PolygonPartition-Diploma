@@ -38,18 +38,6 @@ void DrawingArea::clearDrawArea()
 
 	setGrid();
 }
-
-
-
-//QPoint DrawingArea::convertToDrawingAreaCoordinates(QPoint  windowPoint) {
-//	return QPoint((double)(windowPoint.x) / xScale, (double)(this->height() - windowPoint.y) / yScale);
-//}
-//
-//QPoint  DrawingArea::convertToWindowCoordinates(QPoint  drawingAreaPoint) {
-//	///////
-//	auto text = QString("X: %1, Y: %2").arg((double)(x) / xScale).arg((double)(this->height() - y) / yScale);
-//	return drawingAreaPoint;
-//}
  
 void DrawingArea::drawEllipse(QPoint point, int windowRadius, bool isWidjetCoords, QColor fillColor, QColor borderColor , double borderWidth) {
 	painter->setPen(QPen(borderColor, borderWidth));
@@ -89,12 +77,6 @@ void DrawingArea::drawArc(double ang, QPoint left, QPoint center, QPoint top, in
 		center = AppToWidjetCoords(center);
 		top = AppToWidjetCoords(top);
 	}
-
-	/*auto x_diff = offsetInPixels * sin(ang * 3.1415 / 180);
-	auto y_diff = offsetInPixels * cos(ang * 3.1415 / 180);
-
-	QPoint A(center.x() - x_diff, center.y() - y_diff);
-	QPoint B(center.x(), center.y() - offsetInPixels);*/
 
 	painter->drawPie(center.x() - offsetInPixels, center.y() - offsetInPixels, 2 * offsetInPixels, 2 * offsetInPixels, 90 * 16, ang * 16);
 	this->setPixmap(*pixmap);
@@ -172,19 +154,26 @@ void  DrawingArea::mouseMoveEvent(QMouseEvent* event)
 
 	auto x = event->pos().x();
 	auto y = event->pos().y();
-	auto text = QString("X: %1, Y: %2")//; \nwX: %3, wY: %4; \naX: %5, aY: %6; ")
+	auto text = QString("X: %1, Y: %2")
 		.arg((double)(x) / xScale)
 		.arg((double)(this->height() - y) / yScale);
-		/*.arg(x)
-		.arg(y)
-		.arg(WidjetToAppCoordes(event->pos()).x())
-		.arg(WidjetToAppCoordes(event->pos()).y());*/
 	mouseCoordinates->setText(text);
 	mouseCoordinates->setVisible(true);
-	//mouseCoordinates->setGeometry(x + 40,y +40, 100, 50);
 	mouseCoordinates->setGeometry(x + 40, y + 40, 100, 20);
 	mouseCoordinates->setFrameShape(Box);
 	mouseCoordinates->raise();
+}
+
+void DrawingArea::saveImage(char* fileName, int borderWidth)
+{
+	auto pixmapWithBorder = new QPixmap(pixmap->width() + borderWidth * 2, pixmap->height() + borderWidth * 2);
+	
+	painter = new QPainter(pixmapWithBorder);
+	painter->setBrush(Qt::black);
+	painter->drawRect(0, 0, pixmapWithBorder->width(), pixmapWithBorder->height());
+	painter->drawPixmap(borderWidth, borderWidth, *pixmap);
+
+	pixmapWithBorder->toImage().save(QString(fileName));
 }
 
 void DrawingArea::setGrid()

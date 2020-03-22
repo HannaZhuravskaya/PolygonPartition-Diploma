@@ -7,9 +7,6 @@
 
 
 #include <qevent.h>
-
-// TO DO: Check all usages in ui_ApplicationGUI and override methods
-
 class DrawingArea : public QLabel
 {
 	Q_OBJECT
@@ -24,12 +21,6 @@ private:
 	bool gridVisibility;
 public:
 	DrawingArea(QWidget* parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
-
-	//public slots:
-	//	void change()
-	//	{
-	//		setNum(2);
-	//	}
 
 public:
 	bool isPointInBounds(int x, int y);
@@ -56,6 +47,8 @@ public:
 	void setMouseTracking(bool isMouseTracking, QLabel* mouseCoordinates);
 	void setMouseTracking(bool isMouseTracking);
 	void mouseMoveEvent(QMouseEvent* event);
+
+	void saveImage(char* fileName, int borderWidth = 1);
 
 private:
 	void setGrid();
