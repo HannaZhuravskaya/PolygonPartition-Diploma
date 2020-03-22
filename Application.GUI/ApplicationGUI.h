@@ -10,10 +10,12 @@
 #include "../Algorithms/Polygon.h"
 #include "..\Algorithms\PolygonData.h"
 #include "..\Algorithms\PolygonalMesh.h"
-#include <DrawingArea.h>
+#include "..\Application.GUI\DrawingArea.h"
 #include <qspinbox.h>
 
 namespace a = Algorithms;
+
+#define SLD_SCALE 10.0
 
 class ApplicationGUI : public QWidget
 {
@@ -26,12 +28,12 @@ protected:
 	void mousePressEvent(QMouseEvent* event) override;
 	void btn_apply_clicked(bool checked);
 	void btn_reset_clicked(bool checked);
-	void btn_apply_area_clicked(bool checked);
-	void btn_reset_area_clicked(bool checked);
 	void btn_apply_angle_clicked(bool checked);
 	void btn_reset_angle_clicked(bool checked);
+	void btn_saveResults(bool checked);
+	void sliderRangeChanged();
+	void areaOfPartRangeChanged(int min, int max);
 	void calculatePolygonProperties();
-	void calculateAreaProperties();
 
 private:
 	Ui::ApplicationGUIClass ui;
@@ -45,10 +47,6 @@ private:
 	std::pair<a::Point*, a::Point*> anglePoints;
 
 	void initializeControls();
-	void setPolygonPropertiesVisibility(bool isEnabled);
-	void setAreaPropertiesVisibility(bool isEnabled);
-	void setDefaultPolygonProperties();
-	void setDefaultAreaProperties();
 	void setActiveGroupBox(std::string grb_name, bool isNext);
 
 	void addPointToPolygon(int x, int y);
@@ -61,7 +59,9 @@ private:
 	void testMethod();
 	void convertToMesh();
 	void convertToMeshTEST();
-		///
+    ///
 
 	void drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces);
+
+	void setSliderLabelsPosition();
 };

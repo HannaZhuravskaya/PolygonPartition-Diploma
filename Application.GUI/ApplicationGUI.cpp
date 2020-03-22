@@ -37,6 +37,8 @@ void ApplicationGUI::initializeControls()
 	ui.drawingArea_test_4->setScale(3, 3);
 	ui.drawingArea_test_4->setGridVisibility(true);
 	ui.drawingArea_test_4->clearDrawArea();
+
+	connect(ui.btn_saveResults, &QPushButton::clicked, this, &ApplicationGUI::btn_saveResults);
 	////////////////////////////////
 	mouseCoordinates = new QLabel(this);
 	mouseCoordinates->setStyleSheet("QLabel { background-color : white;}");
@@ -50,8 +52,17 @@ void ApplicationGUI::initializeControls()
 #pragma endregion
 
 #pragma region Area properties
-	connect(ui.btn_apply_area, &QPushButton::clicked, this, &ApplicationGUI::btn_apply_area_clicked);
-	connect(ui.btn_reset_area, &QPushButton::clicked, this, &ApplicationGUI::btn_reset_area_clicked);
+	connect(ui.sld_areaOfPart, &RangeSlider::minimumPositionChanged, this,
+		[=](int min) {
+			ui.sld_minPosLabel->setText(QString::number(min / SLD_SCALE));
+			setSliderLabelsPosition();
+		});
+
+	connect(ui.sld_areaOfPart, &RangeSlider::maximumPositionChanged, this,
+		[=](int max) {
+			ui.sld_maxPosLabel->setText(QString::number(max / SLD_SCALE));
+			setSliderLabelsPosition();
+		});
 #pragma endregion
 
 #pragma region Mesh properties
@@ -59,28 +70,6 @@ void ApplicationGUI::initializeControls()
 	connect(ui.btn_apply_angle, &QPushButton::clicked, this, &ApplicationGUI::btn_apply_angle_clicked);
 	connect(ui.btn_reset_angle, &QPushButton::clicked, this, &ApplicationGUI::btn_reset_angle_clicked);
 #pragma endregion
-}
-
-void ApplicationGUI::setDefaultPolygonProperties()
-{
-	/*lbl_notConvex->setVisible(false);
-	chb_isConvex->setChecked(true);
-	polygon = nullptr;
-	clearDrawArea();*/
-}
-
-void ApplicationGUI::setDefaultAreaProperties()
-{
-	/*lbl_areaOfPart->setText("");
-
-	if (polygon != nullptr && polygon->getNumOfSides() == polygon->getNumOfPoints()) {
-		polygonArea = polygon->getSquare();
-		lbl_polygonArea->setText(QString::number(polygonArea));
-	}
-	else {
-		lbl_polygonArea->setText("");
-		polygonArea = 0;
-	}*/
 }
 
 void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
@@ -92,15 +81,12 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_reset->setEnabled(true);
 			ui.btn_apply->setEnabled(false);
 			ui.spin_numOfSides->setEnabled(false);
-			ui.chb_isConvex->setEnabled(false);
-			ui.lbl_notConvex->setVisible(false);
 
 			ui.lbl_polygonArea->setText("");
-			ui.lbl_areaOfPart->setText("");
-			ui.spin_numOfParts->setEnabled(false);
-			ui.btn_apply_area->setEnabled(false);
-			ui.btn_reset_area->setEnabled(false);
-			
+			ui.sld_areaOfPart->setEnabled(false);
+			ui.sld_areaOfPart->setMaximum(0);
+			sliderRangeChanged();
+
 			ui.spin_meshAngle->setEnabled(false);
 			ui.btn_apply_angle->setEnabled(false);
 			ui.btn_reset_angle->setEnabled(false);
@@ -115,21 +101,17 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_reset->setEnabled(false);
 			ui.btn_apply->setEnabled(true);
 			ui.spin_numOfSides->setEnabled(true);
-			ui.chb_isConvex->setEnabled(true);
-			ui.lbl_notConvex->setVisible(false);
-			
+
 			ui.lbl_polygonArea->setText("");
-			ui.lbl_areaOfPart->setText("");
-			ui.spin_numOfParts->setEnabled(false);
-			ui.btn_apply_area->setEnabled(false);
-			ui.btn_reset_area->setEnabled(false);
-			
+			ui.sld_areaOfPart->setEnabled(false);
+			ui.sld_areaOfPart->setMaximum(0);
+			sliderRangeChanged();
+
 			ui.spin_meshAngle->setEnabled(false);
 			ui.btn_apply_angle->setEnabled(false);
 			ui.btn_reset_angle->setEnabled(false);
 			ui.meshAngleDrawingArea->clearDrawArea();
 
-			ui.chb_isConvex->setChecked(true);
 			polygon = nullptr;
 			ui.polygonDrawingArea->clearDrawArea();
 			anglePoints = std::make_pair(nullptr, nullptr);
@@ -142,39 +124,16 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_reset->setEnabled(true);
 			ui.btn_apply->setEnabled(false);
 			ui.spin_numOfSides->setEnabled(false);
-			ui.chb_isConvex->setEnabled(false);
-			ui.lbl_notConvex->setVisible(false);
 
-			ui.lbl_areaOfPart->setText(QString::number(polygonArea / ui.spin_numOfParts->value()));
-			ui.spin_numOfParts->setEnabled(false);
-			ui.btn_apply_area->setEnabled(false);
-			ui.btn_reset_area->setEnabled(true);
+			ui.lbl_polygonArea->setText(QString::number(polygonArea));
+			ui.sld_areaOfPart->setMaximum(polygonArea);
+			ui.sld_areaOfPart->setEnabled(true);
+			sliderRangeChanged();
 
 			ui.spin_meshAngle->setEnabled(true);
 			ui.btn_apply_angle->setEnabled(true);
 			ui.btn_reset_angle->setEnabled(false);
 			anglePoints = std::make_pair(nullptr, nullptr);
-		}
-		else {
-			activeGroupBox = "areaProperties";
-
-			ui.btn_reset->setEnabled(true);
-			ui.btn_apply->setEnabled(false);
-			ui.spin_numOfSides->setEnabled(false);
-			ui.chb_isConvex->setEnabled(false);
-			ui.lbl_notConvex->setVisible(false);
-
-			ui.lbl_polygonArea->setText(QString::number(polygonArea));
-			ui.lbl_areaOfPart->setText("");
-			ui.spin_numOfParts->setEnabled(true);
-			ui.btn_apply_area->setEnabled(true);
-			ui.btn_reset_area->setEnabled(false);
-
-			ui.spin_meshAngle->setEnabled(false);
-			ui.btn_apply_angle->setEnabled(false);
-			ui.btn_reset_angle->setEnabled(false);
-			anglePoints = std::make_pair(nullptr, nullptr);
-			ui.meshAngleDrawingArea->clearDrawArea();
 		}
 	}
 	else if (grb_name == "meshProperties") {
@@ -184,13 +143,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_reset->setEnabled(true);
 			ui.btn_apply->setEnabled(false);
 			ui.spin_numOfSides->setEnabled(false);
-			ui.chb_isConvex->setEnabled(false);
-			ui.lbl_notConvex->setVisible(false);
-
-			ui.lbl_areaOfPart->setText(QString::number(polygonArea / ui.spin_numOfParts->value()));
-			ui.spin_numOfParts->setEnabled(false);
-			ui.btn_apply_area->setEnabled(false);
-			ui.btn_reset_area->setEnabled(true);
 
 			ui.spin_meshAngle->setEnabled(false);
 			ui.btn_apply_angle->setEnabled(false);
@@ -202,14 +154,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_reset->setEnabled(true);
 			ui.btn_apply->setEnabled(false);
 			ui.spin_numOfSides->setEnabled(false);
-			ui.chb_isConvex->setEnabled(false);
-			ui.lbl_notConvex->setVisible(false);
-
-			ui.lbl_polygonArea->setText(QString::number(polygonArea));
-			ui.lbl_areaOfPart->setText(QString::number(polygonArea / ui.spin_numOfParts->value()));
-			ui.spin_numOfParts->setEnabled(false);
-			ui.btn_apply_area->setEnabled(false);
-			ui.btn_reset_area->setEnabled(true);
 
 			ui.spin_meshAngle->setEnabled(true);
 			ui.btn_apply_angle->setEnabled(true);
@@ -218,34 +162,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.meshAngleDrawingArea->clearDrawArea();
 		}
 	}
-}
-
-void ApplicationGUI::setPolygonPropertiesVisibility(bool isEnabled)
-{
-	/*btn_reset->setEnabled(!isEnabled);
-	btn_apply->setEnabled(isEnabled);
-
-	spin_numOfSides->setEnabled(isEnabled);
-	chb_isConvex->setEnabled(isEnabled);
-
-	if (isEnabled) {
-		setDefaultPolygonProperties();
-	}*/
-}
-
-void ApplicationGUI::setAreaPropertiesVisibility(bool isEnabled)
-{
-	/*btn_reset_area->setEnabled(!isEnabled);
-	btn_apply_area->setEnabled(isEnabled);
-
-	spin_numOfParts->setEnabled(isEnabled);
-
-	if (isEnabled) {
-		setDefaultAreaProperties();
-	}
-	else {
-		calculateAreaProperties();
-	}*/
 }
 
 void ApplicationGUI::addPointToPolygon(int x, int y)
@@ -292,7 +208,7 @@ void ApplicationGUI::addPointToAngle(int x, int y)
 		auto xPos = std::abs(anglePoints.first->x - anglePoints.second->x) / 2 + min(anglePoints.first->x, anglePoints.second->x);
 
 		ui.meshAngleDrawingArea->drawLine(QPoint(xPos, ui.meshAngleDrawingArea->y()), QPoint(xPos, ui.meshAngleDrawingArea->height() + ui.meshAngleDrawingArea->y()), false, Qt::red);
-		
+
 		QPoint center = QPoint(xPos, std::abs(anglePoints.first->y - anglePoints.second->y) / 2 + min(anglePoints.first->y, anglePoints.second->y)); // intersection of lines
 		QPoint left = QPoint(anglePoints.first->x, anglePoints.first->y); // end point of horizontal line
 		QPoint top = QPoint(xPos, ui.meshAngleDrawingArea->y()); // end point of other line
@@ -301,18 +217,18 @@ void ApplicationGUI::addPointToAngle(int x, int y)
 		ui.meshAngleDrawingArea->drawEllipse(QPoint(x, y), 4, false);
 		ui.meshAngleDrawingArea->drawLine(QPoint(anglePoints.first->x, anglePoints.first->y),
 			QPoint(anglePoints.second->x, anglePoints.second->y), false);
-		
+
 		setActiveGroupBox("meshProperties", true);
 
-		convertToMesh();
+		//convertToMesh();
 		//convertToMeshTEST();
 	}
 }
 
 void ApplicationGUI::convertToMeshTEST() {
-	vectorD* x = new vectorD{40, 14, 10, 12, 20, 29, 37};
-	vectorD* y = new vectorD{45, 30, 21, 13, 10, 12, 29};
-	vectorI* edges = new vectorI{0, 1, 2, 3, 4, 5, 6};
+	vectorD* x = new vectorD{ 40, 14, 10, 12, 20, 29, 37 };
+	vectorD* y = new vectorD{ 45, 30, 21, 13, 10, 12, 29 };
+	vectorI* edges = new vectorI{ 0, 1, 2, 3, 4, 5, 6 };
 
 	//Rotation r = Rotation(ui.spin_meshAngle->value(), RotationDirection::Right);
 	//r.tryRotateFigure(x, y);
@@ -343,11 +259,11 @@ void ApplicationGUI::convertToMeshTEST() {
 
 	//r.tryRrotateTheFigureBack(&horisontalSplittedData.vertex_x, &horisontalSplittedData.vertex_y);
 	drawPolygonMesh(ui.drawingArea_test_4, 2, horisontalSplittedData.vertex_x, horisontalSplittedData.vertex_y, horisontalSplittedData.edges, horisontalSplittedData.faces);
-	
+
 	auto vert = m.removeEdge(m.E[37]);
 	m.removeVertex(vert[0]);
 	m.removeVertex(vert[1]);
-	vert =m.removeEdge(m.E[33]);
+	vert = m.removeEdge(m.E[33]);
 	m.removeVertex(vert[0]);
 	m.removeVertex(vert[1]);
 	vert = m.removeEdge(m.E[25]);
@@ -373,8 +289,8 @@ void ApplicationGUI::mouseMoveEvent(QMouseEvent* event)
 
 void ApplicationGUI::createDefaultPolygonMesh()
 {
-	vectorD *x = new vectorD();
-	vectorD *y = new vectorD();
+	vectorD* x = new vectorD();
+	vectorD* y = new vectorD();
 
 	vectorI faces;
 	vectorI edges;
@@ -422,14 +338,14 @@ void ApplicationGUI::createDefaultPolygonMesh()
 	edges.push_back(5);
 	edges.push_back(6);
 	edges.push_back(7);
-	
-	drawPolygonMesh(ui.drawingArea_test,3,  *x, *y, edges, faces);
+
+	drawPolygonMesh(ui.drawingArea_test, 3, *x, *y, edges, faces);
 
 	Rotation rotation = Rotation(ui.spin_meshAngle->value(), Right);
 	rotation.tryRotateFigure(x, y);
 
 	//// in spin box central aligment!!!
-	drawPolygonMesh(ui.polygonDrawingArea,10, *x,* y, edges, faces);
+	drawPolygonMesh(ui.polygonDrawingArea, 10, *x, *y, edges, faces);
 }
 
 void ApplicationGUI::testMethod() {
@@ -740,7 +656,8 @@ void ApplicationGUI::convertToMesh()
 	auto SplittedByGridData = m.convertToPolygonData();
 	drawPolygonMesh(ui.drawingArea_test_2, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
 
-	auto splitedEdges = m.splitFaces(polygonArea / ui.spin_numOfParts->value());
+	//auto splitedEdges = m.splitFaces(polygonArea / ui.spin_numOfParts->value());
+	auto splitedEdges = nullptr;
 
 	auto verticalSplittedData = m.convertToPolygonData();
 	drawPolygonMesh(ui.drawingArea_test_3, 2, verticalSplittedData.vertex_x, verticalSplittedData.vertex_y, verticalSplittedData.edges, verticalSplittedData.faces);
@@ -770,7 +687,7 @@ void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoint
 		for (int j = faces[i - 1]; j < faces[i]; ++j) {
 			if (j == faces[i] - 1) {
 				drawingArea->drawLine(
-					drawingArea ->LogicToPixelCoords(QPointF(x[edges[j]], y[edges[j]]), false),
+					drawingArea->LogicToPixelCoords(QPointF(x[edges[j]], y[edges[j]]), false),
 					drawingArea->LogicToPixelCoords(QPointF(x[edges[faces[i - 1]]], y[edges[faces[i - 1]]]), false),
 					false, Qt::black, 1);
 			}
@@ -786,6 +703,26 @@ void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoint
 	//	ui.polygonDrawingArea->drawLine(ui.polygonDrawingArea->LogicToPixelCoords(QPointF(firstPixelPoint.x, firstPixelPoint.y), false), QPoint(x, y), false, Qt::black, 1);
 }
 
+void ApplicationGUI::setSliderLabelsPosition()
+{
+	auto w = ui.sld_areaOfPart->width();
+
+
+	ui.sld_minPosLabel->setGeometry(10 + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * w), 40, 30, 16);
+
+
+	QRect d = ui.sld_maxPosLabel->geometry();
+	QRect droppedRect = QRect(d.left(), 40, d.width(), d.height());
+
+	if (droppedRect.intersects(ui.sld_minPosLabel->geometry()))
+	{
+		ui.sld_maxPosLabel->setGeometry(((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * w) + 10, 0, 30, 16);
+	}
+	else {
+		ui.sld_maxPosLabel->setGeometry(((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * w) + 10, 40, 30, 16);
+	}
+}
+
 void ApplicationGUI::btn_apply_clicked(bool checked)
 {
 	setActiveGroupBox("polygonProperties", true);
@@ -794,16 +731,6 @@ void ApplicationGUI::btn_apply_clicked(bool checked)
 void ApplicationGUI::btn_reset_clicked(bool checked)
 {
 	setActiveGroupBox("polygonProperties", false);
-}
-
-void ApplicationGUI::btn_apply_area_clicked(bool checked)
-{
-	setActiveGroupBox("areaProperties", true);
-}
-
-void ApplicationGUI::btn_reset_area_clicked(bool checked)
-{
-	setActiveGroupBox("areaProperties", false);
 }
 
 void ApplicationGUI::btn_apply_angle_clicked(bool checked)
@@ -816,24 +743,40 @@ void ApplicationGUI::btn_reset_angle_clicked(bool checked)
 	setActiveGroupBox("meshProperties", false);
 }
 
-void ApplicationGUI::calculatePolygonProperties()
+void ApplicationGUI::btn_saveResults(bool checked)
 {
-	if (ui.chb_isConvex->isChecked()) {
-		if (polygon->isConvex()) {
-			//setDefaultAreaProperties();
-			polygonArea = polygon->getSquare();
-			setActiveGroupBox("areaProperties", false);
-		}
-		else {
-
-			ui.lbl_notConvex->setVisible(true);
-		}
-	}
+	ui.polygonDrawingArea->saveImage("Polygon.png", 1);
 }
 
-void ApplicationGUI::calculateAreaProperties()
+void ApplicationGUI::calculatePolygonProperties()
 {
-	ui.lbl_areaOfPart->setText(QString::number(polygonArea / ui.spin_numOfParts->value()));
+	polygonArea = polygon->getSquare();
+	setActiveGroupBox("areaProperties", true);
+}
+
+void ApplicationGUI::sliderRangeChanged()
+{
+	if (ui.sld_areaOfPart->maximum() > 0)
+	{
+		ui.sld_areaOfPart->setMinimum(1);
+	}
+
+	ui.sld_areaOfPart->setMinimumPosition(0);
+	ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
+
+	areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
+}
+
+void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
+{
+	if (min == max && min == 0) {
+		ui.sld_minPosLabel->setText("");
+		ui.sld_maxPosLabel->setText("");
+	}
+	else {
+		ui.sld_minPosLabel->setText(QString::number(min / SLD_SCALE));
+		ui.sld_maxPosLabel->setText(QString::number(max / SLD_SCALE));
+	}
 }
 
 void ApplicationGUI::mousePressEvent(QMouseEvent* event)
