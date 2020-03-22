@@ -8,6 +8,9 @@
     <ClCompile Include="DrawingArea.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="RangeSlider.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Resource Files">
@@ -36,6 +39,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="DrawingArea.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="RangeSlider.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

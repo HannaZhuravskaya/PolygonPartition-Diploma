@@ -92,6 +92,7 @@
     <ClCompile Include="ApplicationGUI.cpp" />
     <ClCompile Include="DrawingArea.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="RangeSlider.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="ApplicationGUI.h" />
@@ -109,6 +110,9 @@
     <ProjectReference Include="..\Algorithms\Algorithms.vcxproj">
       <Project>{748a530d-b8de-41b0-bdb1-81cb08e78431}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="RangeSlider.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
