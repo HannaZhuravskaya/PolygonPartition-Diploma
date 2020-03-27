@@ -2,82 +2,12 @@
 #include "framework.h"
 #include "PolygonalMesh.h"
 #include <map>
+#include <set>
 
-const double EPS = 0.0001;
+#pragma region Base mesh operations
 
 Mesh::Mesh()
 {
-}
-
-void Mesh::setEdge(Edge* edgeToSet, Vertex* v, Face* f, Edge* prev, Edge* next, Edge* sym){
-	edgeToSet->v = v;
-	edgeToSet->f = f;
-	edgeToSet->prev = prev;
-	edgeToSet->next = next;
-	edgeToSet->sym = sym;
-}
-
-void Mesh::iteratingOverTheEdgesOfFace(Face * f)
-{
-	//Iterating over the edges of face f
-	Edge* start = f->e;
-	Edge* e = start;
-	do {
-		//visit(e);
-		e = e->next; // CCW order
-	} while (e != start);
-	//• Iterate over vertices : visit(e->v)
-	//• Iterate over neighboring faces : visit(e->sym->f)
-	//• For CW order : e = e->prev
-}
-
-PolygonData Mesh::convertToPolygonData() {
-	PolygonData data = PolygonData();
-
-	vectorD* x = new vectorD();
-	vectorD* y = new vectorD();
-
-	std::map<int, int> realNumberOfVertex;
-
-	for (int i = 0; i < V.size(); ++i) {
-		if (V[i]->isDeleted) {
-			continue;
-		}
-
-		realNumberOfVertex[i] = x->size();
-		auto point = V[i]->pos;
-		x->push_back(point->x);
-		y->push_back(point->y);
-	}
-
-	data.tryAddPoints(*x, *y);
-
-	for (int i = 0; i < F.size(); ++i) {
-		if (F[i]->isDeleted)
-			continue;
-
-		vectorI points;
-		std::vector<int>  points_v;
-
-		auto firstEdge = F[i]->e;
-		points_v.push_back(realNumberOfVertex[firstEdge->v->numOfVertex]);
-		auto cur = firstEdge->next;
-
-		while (cur !=  firstEdge) {
-			points_v.push_back(realNumberOfVertex[cur->v->numOfVertex]);
-			cur = cur->next;
-		}
-		
-		points.resize(points_v.size());
-
-		for (int j = 0; j < points.size(); ++j) {
-			points[j] = points_v[j];
-		}
-
-		data.tryAddFace(points.size(),points);
-	}
-	
-	return data;
 }
 
 Vertex* Mesh::splitEdge(Edge* e, Point* pos) {
@@ -135,13 +65,13 @@ Edge* Mesh::removeVertex(Vertex* v) {
 	//works only for boundary points
 
 	if (v->e->sym != nullptr) {
-		
+
 	}
-	else {		
+	else {
 		Edge* toReturn = v->e->next;
 		v->e->prev->next = v->e->next;
 		v->e->next->prev = v->e->prev;
-		
+
 		Edge* toDelete = v->e;
 		v->e = nullptr;
 		v->isDeleted = true;
@@ -163,7 +93,7 @@ Edge* Mesh::removeVertex(Vertex* v) {
 	return nullptr;
 }
 
-std::vector<Vertex*> Mesh::removeEdge(Edge * e) {
+std::vector<Vertex*> Mesh::removeEdge(Edge* e) {
 	//works only for boundary points
 	Face* face = e->f;
 	face->area = face->area + e->sym->f->area;
@@ -179,7 +109,7 @@ std::vector<Vertex*> Mesh::removeEdge(Edge * e) {
 	auto firstEInFaceToDelete = e->sym->f->e;
 	e->sym->f->e = nullptr;
 	firstEInFaceToDelete->f = face;
-	
+
 	auto eINFaceToDelete = firstEInFaceToDelete->next;
 	face->e = eINFaceToDelete;
 	while (eINFaceToDelete != firstEInFaceToDelete) {
@@ -225,39 +155,139 @@ std::vector<Vertex*> Mesh::removeEdge(Edge * e) {
 	return vertexes;
 }
 
-Edge* Mesh::findPrevEdge(Vertex* v, Face* f) {
-
-	if (v->e->v == v && v->e->f == f) {
-		return v->e->prev;
-	}
-
-	auto cur = f->e;
-	while (cur->v != v) {
-		cur = cur->next;
-	}
-
-	return cur->prev;
-}
-
-Edge* Mesh::findNextEdge(Vertex* v, Face* f) {
-	if (v->e->v == v && v->e->f == f) {
-		return v->e;
-	}
-
-	auto cur = f->e;
-	while (cur->v != v) {
-		cur = cur->next;
-	}
-
-	return cur;
-}
-
 Edge* Mesh::connectVertexes(Vertex* v1, Vertex* v2) {
-	if ((v1->e->f != v2->e->f )
+	if ((v1->e->f != v2->e->f)
 		&& (v2->e->sym == nullptr || v1->e->f != v2->e->sym->f)
 		&& (v1->e->sym == nullptr || v2->e->f != v1->e->sym->f)
-		&& ((v1->e->sym == nullptr || v2->e->sym == nullptr )|| v2->e->sym->f != v1->e->sym->f)) {
-		return nullptr;
+		&& ((v1->e->sym == nullptr || v2->e->sym == nullptr) || v2->e->sym->f != v1->e->sym->f)) {
+
+#pragma region Edges from v1
+		std::map<Face*, Edge*> v1Faces;
+
+		Edge* firstEdge = nullptr; // edge which starts from v1
+
+		// if edge in v1 starts from v1
+		if (v1->e->v == v1) {
+			firstEdge = v1->e;
+		} // if edge in v1 ends in v1
+		else if (v1->e->next->v == v1) {
+			firstEdge = v1->e->next;
+		}
+		else {
+			return nullptr;
+		}
+
+		v1Faces.insert({ firstEdge->f, firstEdge });
+
+		//go to the right until return to the first edge or to the border of mesh
+		auto curr = firstEdge->sym;
+		while (curr != nullptr && curr != firstEdge->sym) {
+			v1Faces.insert({ curr->f, curr->next });
+			curr = curr->next->sym;
+		}
+
+		//go to the left until return to the first edge or to the border of mesh
+		curr = firstEdge->prev->sym;
+		while (curr != nullptr && curr != firstEdge) {
+			v1Faces.insert({ curr->f, curr });
+			curr = curr->prev->sym;
+		}
+#pragma
+
+#pragma region Edges from v2
+		std::map<Face*, Edge*> v2Faces;
+
+		// if edge in v2 starts from v2
+		if (v2->e->v == v2) {
+			firstEdge = v2->e;
+		} // if edge in v2 ends in v2
+		else if (v2->e->next->v == v2) {
+			firstEdge = v2->e->next;
+		}
+		else {
+			return nullptr;
+		}
+
+		v2Faces.insert({ firstEdge->f, firstEdge });
+
+		//go to the right until return to the first edge or to the border of mesh
+		curr = firstEdge->sym;
+		while (curr != nullptr && curr != firstEdge->sym) {
+			v2Faces.insert({ curr->f, curr });
+			curr = curr->next->sym;
+		}
+
+		//go to the left until return to the first edge or to the border of mesh
+		curr = firstEdge->prev->sym;
+		while (curr != nullptr && curr != firstEdge) {
+			v2Faces.insert({ curr->f, curr });
+			curr = curr->prev->sym;
+		}
+#pragma
+		std::vector<std::pair<Face*, Edge*>> inter;
+		Edge* edgeOfv1 = nullptr;
+		Edge* edgeOfv2 = nullptr;
+
+		for (auto var1 : v1Faces)
+		{
+			if (v2Faces.find(var1.first) != v2Faces.end()) {
+				inter.push_back(var1);
+				inter.push_back({var1.first, v2Faces[var1.first] });
+				edgeOfv1 = var1.second;
+				edgeOfv2 = v2Faces[var1.first];
+			}
+		}
+
+		if (inter.size() != 2)
+			return nullptr;
+
+
+		Edge* e1 = new Edge;
+		e1->numOfEdge = E.size();
+		Edge* e2 = new Edge;
+		e2->numOfEdge = E.size() + 1;
+		Face* newFace = new Face;
+		newFace->numOfFace = F.size();
+
+		E.push_back(e1);
+		E.push_back(e2);
+		F.push_back(newFace);
+
+		setEdge(e1, v2, edgeOfv1->f, edgeOfv2->prev, edgeOfv1, e2);
+		setEdge(e2, v1, newFace, edgeOfv1->prev, edgeOfv2, e1);
+
+		edgeOfv1->prev->next = e2;
+		edgeOfv1->prev = e1;
+
+		edgeOfv2->prev->next = e1;
+		edgeOfv2->prev = e2;
+
+		newFace->e = e2;
+		e1->f->e = e1;
+
+		auto cur = newFace->e->next;
+
+		//errror !!!!!
+		while (cur != newFace->e) {
+			if (cur->v == leftVertex) {
+				leftFace = newFace;
+			}
+
+			cur->f = newFace;
+			cur = cur->next;
+		}
+
+		if (cur->v == leftVertex) {
+			leftFace = newFace;
+		}
+
+		auto newArea = areaOfFace(newFace);
+		newFace->area = newArea;
+		e1->f->area = e1->f->area - newArea;
+
+		meshInnerPerimeter += 2 * getDistance(e1->v, e1->next->v);
+
+		return e1;
 	}
 
 	Edge* e1 = new Edge;
@@ -288,7 +318,7 @@ Edge* Mesh::connectVertexes(Vertex* v1, Vertex* v2) {
 	newFace->e = e2;
 	e1->f->e = e1;
 
-	auto cur =newFace->e->next;
+	auto cur = newFace->e->next;
 
 	//errror !!!!!
 	while (cur != newFace->e) {
@@ -313,48 +343,79 @@ Edge* Mesh::connectVertexes(Vertex* v1, Vertex* v2) {
 	return e1;
 }
 
-double Mesh::areaOfFace(Face* f) {
-	double area = 0;
-	Edge* cur = f->e;
-	Edge* next = f->e->next;
-
-	do {
-		area += (cur->v->pos->x * next->v->pos->y - cur->v->pos->y * next->v->pos->x);
-		cur = next;
-		next = cur->next;
-	} while (cur != f->e);
-
-	area /= 2;
-	return abs(area);
+void Mesh::setEdge(Edge* edgeToSet, Vertex* v, Face* f, Edge* prev, Edge* next, Edge* sym) {
+	edgeToSet->v = v;
+	edgeToSet->f = f;
+	edgeToSet->prev = prev;
+	edgeToSet->next = next;
+	edgeToSet->sym = sym;
 }
 
-double Mesh::perimeterOfFace(Face* f) {
-	double perimetr = 0.0;
-	Edge* cur = f->e;
-	Edge* next = f->e->next;
-
-	do {
-		perimetr += getDistance(cur->v, next->v);
-		cur = next;
-		next = cur->next;
-	} while (cur != f->e);
-
-	return perimetr;
-}
-
-double Mesh::getDistance(Vertex * v1, Vertex * v2) {
-	return  sqrt((v1->pos->x - v2->pos->x) * (v1->pos->x - v2->pos->x) + (v1->pos->y - v2->pos->y) * (v1->pos->y - v2->pos->y));
-}
-
-double Mesh::crossProductLength(Point a, Point b, Point c)
+void Mesh::iteratingOverTheEdgesOfFace(Face* f)
 {
-	float BAx = a.x - b.x;
-	float BAy = a.y - b.y;
-	float BCx = c.x - b.x;
-	float BCy = c.y - b.y;
+	//Iterating over the edges of face f
+	Edge* start = f->e;
+	Edge* e = start;
+	do {
+		//visit(e);
+		e = e->next; // CCW order
+	} while (e != start);
+	//• Iterate over vertices : visit(e->v)
+	//• Iterate over neighboring faces : visit(e->sym->f)
+	//• For CW order : e = e->prev
+}
 
-	// Calculate the Z coordinate of the cross product.
-	return (BAx * BCy - BAy * BCx);
+#pragma endregion
+
+#pragma region Mesh-PolygonData Convertation 
+
+PolygonData Mesh::convertToPolygonData() {
+	PolygonData data = PolygonData();
+
+	vectorD* x = new vectorD();
+	vectorD* y = new vectorD();
+
+	std::map<int, int> realNumberOfVertex;
+
+	for (int i = 0; i < V.size(); ++i) {
+		if (V[i]->isDeleted) {
+			continue;
+		}
+
+		realNumberOfVertex[i] = x->size();
+		auto point = V[i]->pos;
+		x->push_back(point->x);
+		y->push_back(point->y);
+	}
+
+	data.tryAddPoints(*x, *y);
+
+	for (int i = 0; i < F.size(); ++i) {
+		if (F[i]->isDeleted)
+			continue;
+
+		vectorI points;
+		std::vector<int>  points_v;
+
+		auto firstEdge = F[i]->e;
+		points_v.push_back(realNumberOfVertex[firstEdge->v->numOfVertex]);
+		auto cur = firstEdge->next;
+
+		while (cur !=  firstEdge) {
+			points_v.push_back(realNumberOfVertex[cur->v->numOfVertex]);
+			cur = cur->next;
+		}
+		
+		points.resize(points_v.size());
+
+		for (int j = 0; j < points.size(); ++j) {
+			points[j] = points_v[j];
+		}
+
+		data.tryAddFace(points.size(),points);
+	}
+	
+	return data;
 }
 
 void Mesh::convertFromPolygonData(PolygonData data) {
@@ -422,11 +483,128 @@ void Mesh::convertFromPolygonData(PolygonData data) {
 	}*/
 }
 
-std::tuple<double, double, double> Mesh::findCoeff(double x1, double y1, double x2, double y2) {
-	return std::make_tuple(y1 - y2, x2 - x1, x1 * y2 - x2 * y1);
+void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data, double area) {
+	leftVertex = nullptr;
+
+	for (int i = 0; i < data.getNumOfVertexes(); ++i) {
+		Vertex* v = new Vertex;
+		v->pos = new Point{ data.vertex_x[i], data.vertex_y[i] };
+		v->numOfVertex = i;
+		V.push_back(v);
+
+		if (leftVertex == nullptr) {
+			leftVertex = v;
+		}
+
+		if (data.vertex_x[i] < data.vertex_x[leftVertex->numOfVertex]) {
+			leftVertex = V[i];;
+		}
+
+		this->originalVertexes.push_back(this->V[i]);
+	}
+
+	Face* f = new Face;
+	f->area = area;
+	f->numOfFace = 0;
+
+	for (int j = 0; j < data.getNumOfVertexes(); ++j) {
+		Edge* e = new Edge;
+		e->numOfEdge = j;
+		E.push_back(e);
+	}
+
+	f->e = E[0];
+	F.push_back(f);
+
+	leftFace = F[0];
+
+	for (int j = 0; j < data.getNumOfVertexes(); ++j) {
+		auto numOfPrevEdgeInData = (j - 1 + data.getNumOfVertexes()) % data.getNumOfVertexes();
+		auto numOfNextEdgeInData = (j + 1) % data.getNumOfVertexes();
+
+		setEdge(
+			E[j],
+			V[j],
+			f,
+			E[numOfPrevEdgeInData],
+			E[numOfNextEdgeInData],
+			nullptr);
+
+		V[j]->e = E[j];
+	}
 }
 
-std::tuple<int, double, double> Mesh::findRoots(double a, double b, double c) {
+#pragma endregion
+
+#pragma region Computational Methods
+
+double Mesh::areaOfFace(Face* f) {
+	double area = 0;
+	Edge* cur = f->e;
+	Edge* next = f->e->next;
+
+	do {
+		area += (cur->v->pos->x * next->v->pos->y - cur->v->pos->y * next->v->pos->x);
+		cur = next;
+		next = cur->next;
+	} while (cur != f->e);
+
+	area /= 2;
+	return abs(area);
+}
+
+double Mesh::perimeterOfFace(Face* f) {
+	double perimetr = 0.0;
+	Edge* cur = f->e;
+	Edge* next = f->e->next;
+
+	do {
+		perimetr += getDistance(cur->v, next->v);
+		cur = next;
+		next = cur->next;
+	} while (cur != f->e);
+
+	return perimetr;
+}
+
+double Mesh::getDistance(Vertex* v1, Vertex* v2) {
+	return  sqrt((v1->pos->x - v2->pos->x) * (v1->pos->x - v2->pos->x) + (v1->pos->y - v2->pos->y) * (v1->pos->y - v2->pos->y));
+}
+
+double Mesh::crossProductLength(Point a, Point b, Point c)
+{
+	float BAx = a.x - b.x;
+	float BAy = a.y - b.y;
+	float BCx = c.x - b.x;
+	float BCy = c.y - b.y;
+
+	// Calculate the Z coordinate of the cross product.
+	return (BAx * BCy - BAy * BCx);
+}
+
+double Mesh::isPointInEdge(Vertex* v1, Vertex* v2, Point* p) {
+	if (abs(v1->pos->x - v2->pos->x) < EPS) {
+		return abs(p->x - v1->pos->x) < EPS
+			&& (p->y - max(v1->pos->y, v2->pos->y)) < EPS
+			&& (min(v1->pos->y, v2->pos->y) - p->y) < EPS;
+	}
+
+	if (abs(v1->pos->y - v2->pos->y) < EPS) {
+		return abs(p->y - v1->pos->y) < EPS
+			&& (p->x - max(v1->pos->x, v2->pos->x)) < EPS
+			&& (min(v1->pos->x, v2->pos->x) - p->x) < EPS;
+	}
+
+	auto k = (v1->pos->y - v2->pos->y) / (v1->pos->x - v2->pos->x);
+	auto b = v1->pos->y - k * v1->pos->x;
+	return abs(p->y - (k * p->x + b)) < EPS;
+}
+
+std::tuple<double, double, double> Mesh::findLineCoefficients(double x1, double y1, double x2, double y2) {
+	return { y1 - y2, x2 - x1, x1 * y2 - x2 * y1 };
+}
+
+std::tuple<int, double, double> Mesh::findRootsOfEquation(double a, double b, double c) {
 	int numOfRoots;
 	double x1, x2;
 
@@ -451,10 +629,10 @@ std::tuple<int, double, double> Mesh::findRoots(double a, double b, double c) {
 			x2 = (-b - ds) / (2 * a);
 		}
 	}
-	return std::make_tuple(numOfRoots, x1, x2);
+	return { numOfRoots, x1, x2 };
 }
 
-void Mesh::addRoots(std::tuple<int, double, double> r1, std::vector<double>* roots) {
+void Mesh::addValidRootsToList(std::tuple<int, double, double> r1, std::vector<double>* roots) {
 	if (std::get<0>(r1) == 0)
 		return;
 	roots->push_back(std::get<1>(r1));
@@ -464,54 +642,21 @@ void Mesh::addRoots(std::tuple<int, double, double> r1, std::vector<double>* roo
 	roots->push_back(std::get<2>(r1));
 }
 
-std::pair<Point*,Point*> Mesh::findPointsV(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4, double S) {
-	//1-leftBottom
-	//2-leftTop
-	//3-rightTop
-	//4-rightBottom
-	auto coeff1 = findCoeff(x4, y4, x1, y1), coeff2 = findCoeff(x2, y2, x3, y3);
-	double a1 = std::get<0>(coeff1), b1 = std::get<1>(coeff1), c1 = std::get<2>(coeff1);
-	double a2 = std::get<0>(coeff2), b2 = std::get<1>(coeff2), c2 = std::get<2>(coeff2);
-	auto k1 = -b1;
-	auto k2 = -b2;
-	auto a = b1 * a2 - a1 * b2;
-	auto b = b2 * c1 - b1 * c2 + y1 * k2 * b1 + x1 * k2 * a1 - x2 * k1 * a2 - y2 * k1 * b2;
-	auto c = k1 * k2 * (x1 * y2 - x2 * y1) + x2 * k1 * c2 - x1 * k2 * c1;
-	auto c_pos = c + 2 * S * k1 * k2;
-	auto c_neg = c - 2 * S * k1 * k2;
-
-	auto roots1 = findRoots(a, b, c_neg);
-	auto roots2 = findRoots(a, b, c_pos);
-
-	std::vector<double>* roots = new std::vector<double>();
-	addRoots(roots1, roots);
-	addRoots(roots2, roots);
-
-	for (int i = 0; i < roots->size(); ++i) {
-		double c3 = (*roots)[i];
-		double x5 = (c3 * b2) / k2,
-			y5 = (c2 - c3 * a2) / k2,
-			x6 = (c3 * b1) / k1,
-			y6 = (c1 - c3 * a1) / k1;
-
-		auto check_c3 = x5 * y6 - x6 * y5;
-		auto b3_check = x6 - x5;
-		auto a3_check = y5 - y6;
-
-		if (abs(b3_check) > EPS && std::abs((check_c3 / b3_check) - c3) > EPS) {
-			continue;
-		}
-		else if (abs(a3_check) > EPS && ((x2 <= x5 && x3 <= x5) || (x2 >= x5 && x3 >= x5) || (x1 <= x6 && x4 <= x6) || (x1 >= x6 && x4 >= x6))) {
-			continue;
-		}
-		else {
-			return std::make_pair <Point*,Point* >(new Point{x5, y5}, new Point{x6, y6});
-
-		}
-	}
-
-	return std::make_pair <Point*, Point* >(nullptr, nullptr);
+double Mesh::findYByXAndTwoVertixes(Vertex* v1, Vertex* v2, double xPos) {
+	auto k = (v1->pos->y - v2->pos->y) / (v1->pos->x - v2->pos->x);
+	auto b = v1->pos->y - k * v1->pos->x;
+	return k * xPos + b;
 }
+
+double Mesh::findXByYAndTwoVertixes(Vertex* v1, Vertex* v2, double yPos) {
+	auto k = (v1->pos->y - v2->pos->y) / (v1->pos->x - v2->pos->x);
+	auto b = v1->pos->y - k * v1->pos->x;
+	return (yPos - b) / k;
+}
+
+#pragma endregion
+
+#pragma region Methods used in the algorithm
 
 std::vector<std::pair<Point*, Point*>> Mesh::splitFaces(double area) {
 	std::vector<std::pair<Point*, Point*>> splittedEdges;
@@ -531,7 +676,7 @@ std::vector<std::pair<Point*, Point*>> Mesh::splitFaces(double area) {
 	while (abs(prev->v->pos->x - leftVertex->pos->x) < EPS) {
 		prev = prev->prev;
 	}
-	
+
 
 	while (true) {
 		if (curFace->area > needArea + EPS) {
@@ -572,7 +717,7 @@ std::vector<std::pair<Point*, Point*>> Mesh::splitFaces(double area) {
 				}
 
 				numOfEdge++;
-				
+
 				if (newE->next == next) {
 					curFace = newE->sym->f;
 					prev = newE->sym->prev;
@@ -602,9 +747,9 @@ std::vector<std::pair<Point*, Point*>> Mesh::splitFaces(double area) {
 				break;
 			}
 			else {
-				splittedEdges.push_back(std::make_pair(
-					new Point{ prev->prev->v->pos->x,  prev->prev->v->pos->y}, 
-					new Point{ prev->v->pos->x,prev->v->pos->y }));
+				splittedEdges.push_back({
+					new Point{ prev->prev->v->pos->x,  prev->prev->v->pos->y },
+					new Point{ prev->v->pos->x,prev->v->pos->y } });
 
 				prev->prev->isTemp = false;
 				if (prev->prev->sym != nullptr) {
@@ -613,9 +758,9 @@ std::vector<std::pair<Point*, Point*>> Mesh::splitFaces(double area) {
 
 				if (prev->prev->f == verticalMesh[numOfEdge - 1]->f && prev->prev->sym != nullptr) {
 					verticalMesh[numOfEdge] = prev->prev->sym;
-					verticalMax[numOfEdge] = prev->prev->v->pos->y > prev->prev->sym->v->pos->y 
+					verticalMax[numOfEdge] = prev->prev->v->pos->y > prev->prev->sym->v->pos->y
 						? prev->prev->v->pos->y : prev->prev->sym->v->pos->y;
-					verticalMin[numOfEdge] = prev->prev->v->pos->y < prev->prev->sym->v->pos->y 
+					verticalMin[numOfEdge] = prev->prev->v->pos->y < prev->prev->sym->v->pos->y
 						? prev->prev->v->pos->y : prev->prev->sym->v->pos->y;
 				}
 				else {
@@ -645,53 +790,61 @@ std::vector<std::pair<Point*, Point*>> Mesh::splitFaces(double area) {
 	return splittedEdges;
 }
 
-void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data, double area) {
-	leftVertex = nullptr;
+double Mesh::calculateInternalPerimetrOfHorisontalPartition(std::vector<std::pair<Point*, Point*>> splitEdges, Edge* left, int numOfLeft, Edge* right, int numOfRight) {
+	double totalPer = 0.0;
 
-	for (int i = 0; i < data.getNumOfVertexes(); ++i) {
-		Vertex* v = new Vertex;
-		v->pos = new Point{ data.vertex_x[i], data.vertex_y[i] };
-		v->numOfVertex = i;
-		V.push_back(v);
+	double curLeftY, curRightY, maxLeft, maxRight;
 
-		if (leftVertex == nullptr) {
-			leftVertex = v;
+	if (numOfLeft != 0) {
+		curLeftY = verticalMin[numOfLeft];
+		maxLeft = verticalMax[numOfLeft];
+	}
+	if (numOfRight != verticalMesh.size() - 1) {
+		curRightY = verticalMin[numOfRight];
+		maxRight = verticalMax[numOfRight];
+	}
+
+	for (int i = 0; i < splitEdges.size() + 1; ++i) {
+		double per = 0.0;
+
+		if (i > 0) {
+			per += abs(splitEdges[i - 1].first->x - splitEdges[i - 1].second->x);
+		}
+		if (i < splitEdges.size()) {
+			per += abs(splitEdges[i].first->x - splitEdges[i].second->x);
 		}
 
-		if (data.vertex_x[i] < data.vertex_x[leftVertex->numOfVertex]) {
-			leftVertex = V[i];;
+		if (numOfLeft != 0) {
+			if (i < splitEdges.size()) {
+				auto leftPointY = splitEdges[i].first->x < splitEdges[i].second->x ? splitEdges[i].first->y : splitEdges[i].second->y;
+
+				if (curLeftY < leftPointY && leftPointY < maxLeft) {
+					per += leftPointY - curLeftY;
+					curLeftY = leftPointY;
+				}
+			}
+			else if (curLeftY < maxLeft) {
+				per += (maxLeft - curLeftY);
+			}
 		}
+		if (numOfRight != verticalMesh.size() - 1) {
+			if (i < splitEdges.size()) {
+				auto rightPointY = splitEdges[i].first->x > splitEdges[i].second->x ? splitEdges[i].first->y : splitEdges[i].second->y;
+
+				if (curRightY < rightPointY && rightPointY < maxRight) {
+					per += rightPointY - curRightY;
+					curRightY = rightPointY;
+				}
+			}
+			else if (curRightY < maxRight) {
+				per += (maxRight - curRightY);
+			}
+		}
+
+		totalPer += per * per;
 	}
 
-	Face* f = new Face;
-	f->area = area;
-	f->numOfFace = 0;
-
-	for (int j = 0; j < data.getNumOfVertexes(); ++j) {
-		Edge* e = new Edge;
-		e->numOfEdge = j;
-		E.push_back(e);
-	}
-
-	f->e = E[0];
-	F.push_back(f);
-
-	leftFace = F[0];
-
-	for (int j = 0; j < data.getNumOfVertexes(); ++j) {
-		auto numOfPrevEdgeInData = (j- 1 + data.getNumOfVertexes()) % data.getNumOfVertexes();
-		auto numOfNextEdgeInData = (j + 1) % data.getNumOfVertexes();
-
-		setEdge(
-			E[j],
-			V[j],
-			f,
-			E[numOfPrevEdgeInData],
-			E[numOfNextEdgeInData],
-			nullptr);
-
-		V[j]->e = E[j];
-	}
+	return totalPer;
 }
 
 void Mesh::splitByVerticalGrid() {
@@ -742,32 +895,6 @@ void Mesh::splitByVerticalGrid() {
 	}
 }
 
-double Mesh::findYByXAndTwoVertixes(Vertex* v1, Vertex* v2, double xPos) {
-	auto k = (v1->pos->y - v2->pos->y) / (v1->pos->x - v2->pos->x);
-	auto b = v1->pos->y - k * v1->pos->x;
-	return k * xPos + b;
-}
-
-double Mesh::isPointInEdge(Vertex* v1, Vertex* v2, Point * p) {
-
-
-	if (abs(v1->pos->x - v2->pos->x) < EPS) {
-		return abs(p->x - v1->pos->x) < EPS
-			&& (p->y - max(v1->pos->y, v2->pos->y)) < EPS
-			&& (min(v1->pos->y, v2->pos->y) - p->y) < EPS;
-	}
-
-	if (abs(v1->pos->y - v2->pos->y) < EPS) {
-		return abs(p->y - v1->pos->y) < EPS
-			&& (p->x - max(v1->pos->x, v2->pos->x)) < EPS
-			&& (min(v1->pos->x, v2->pos->x) - p->x) < EPS;
-	}
-
-	auto k = (v1->pos->y - v2->pos->y) / (v1->pos->x - v2->pos->x);
-	auto b = v1->pos->y - k * v1->pos->x;
-	return abs(p->y -( k * p->x + b)) < EPS;
-}
-
 void Mesh::removeTempVertexesAndEdges() {
 	for (int i = 0; i < E.size(); ++i) {
 		if (!E[i]->isTemp)
@@ -784,10 +911,49 @@ void Mesh::removeTempVertexesAndEdges() {
 	}
 }
 
-double ** Mesh::getInternalHorizontalPerimeters() {
+void Mesh::removeEdgeWithTempVertexes(Edge* e) {
+	auto vertexes = removeEdge(e);
+
+	if (vertexes[0]->isTemp) {
+		removeVertex(vertexes[0]);
+	}
+
+	if (vertexes[1]->isTemp) {
+		removeVertex(vertexes[1]);
+	}
+}
+
+Edge* Mesh::findPrevEdge(Vertex* v, Face* f) {
+
+	if (v->e->v == v && v->e->f == f) {
+		return v->e->prev;
+	}
+
+	auto cur = f->e;
+	while (cur->v != v) {
+		cur = cur->next;
+	}
+
+	return cur->prev;
+}
+
+Edge* Mesh::findNextEdge(Vertex* v, Face* f) {
+	if (v->e->v == v && v->e->f == f) {
+		return v->e;
+	}
+
+	auto cur = f->e;
+	while (cur->v != v) {
+		cur = cur->next;
+	}
+
+	return cur;
+}
+
+double** Mesh::getInternalHorizontalPerimeters() {
 	int numOfEdges = verticalMesh.size() - 2;
 
-	double** perimeters = new double*[numOfEdges + 1];
+	double** perimeters = new double* [numOfEdges + 1];
 
 	//how much vertical edges will be removed
 	for (int i = 1; i <= numOfEdges; ++i) {
@@ -800,110 +966,11 @@ double ** Mesh::getInternalHorizontalPerimeters() {
 				rightEdge = rightEdge->sym;
 			}
 			auto splittedEdges = getHorizontalEdges(leftEdge, rightEdge, i + 1);
-			perimeters[i][j] = calculateInternalPerimetrOfHorisontalPartition(splittedEdges, leftEdge,j-1, rightEdge, j+i);
+			perimeters[i][j] = calculateInternalPerimetrOfHorisontalPartition(splittedEdges, leftEdge, j - 1, rightEdge, j + i);
 		}
 	}
 
 	return perimeters;
-}
-
-std::vector<std::pair<Point*, Point*> > Mesh::getHorizontalEdges(Edge * leftEdge, Edge * rightEdge, int numOfFacesToSplit) {
-	vectorD* x = new vectorD(), * y = new vectorD();
-	vectorI edgesData;
-
-	int pointNum = 0;
-	auto cur = leftEdge;
-	do {
-		x->push_back(cur->v->pos->x);
-		y->push_back(cur->v->pos->y);
-		edgesData.push_back(pointNum);
-		pointNum++;
-
-		if (cur->next->sym != nullptr && cur->next != rightEdge && cur->next != rightEdge->sym) {
-			cur = cur->next->sym->next;
-		}
-		else {
-			cur = cur->next;
-		}
-	} while (cur->v != leftEdge->v && cur->sym != leftEdge);
-
-	Rotation::rotateFigure90(x, y);
-	std::reverse(x->begin(), x->end());
-	std::reverse(y->begin(), y->end());
-
-	auto data = PolygonData();
-	data.vertex_x = *x;
-	data.vertex_y = *y;
-	data.tryAddFace(edgesData.size(), edgesData);
-
-	auto testMesh = Mesh();
-	testMesh.convertFromPolygonDataOfConvexLeftTraversalPolygon(data, leftEdge->f->area * numOfFacesToSplit);
-	testMesh.splitByVerticalGrid();
-	auto splittedEdges = testMesh.splitFaces(leftEdge->f->area);
-
-	for (int i = 0; i < splittedEdges.size(); ++i) {
-		Rotation::rotatePoint90(splittedEdges[i].first);
-		Rotation::rotatePoint90(splittedEdges[i].second);
-	}
-
-	return splittedEdges;
-}
-
-double Mesh::calculateInternalPerimetrOfHorisontalPartition(std::vector<std::pair<Point*, Point*>> splitEdges, Edge* left,int numOfLeft, Edge* right, int numOfRight) {
-	double totalPer = 0.0;
-
-	double curLeftY, curRightY, maxLeft, maxRight;
-	
-	if (numOfLeft != 0) {
-		curLeftY = verticalMin[numOfLeft];
-		maxLeft = verticalMax[numOfLeft];
-	}
-	if (numOfRight != verticalMesh.size() - 1) {
-		curRightY = verticalMin[numOfRight];
-		maxRight = verticalMax[numOfRight];
-	}
-
-	for (int i = 0; i < splitEdges.size() + 1; ++i) {
-		double per = 0.0;
-		
-		if (i > 0) {
-			per += abs(splitEdges[i - 1].first->x - splitEdges[i - 1].second->x);
-		}
-		if (i < splitEdges.size()) {
-			per += abs(splitEdges[i].first->x - splitEdges[i].second->x);
-		}
-
-		if (numOfLeft != 0) {
-			if (i < splitEdges.size()) {
-				auto leftPointY = splitEdges[i].first->x < splitEdges[i].second->x ? splitEdges[i].first->y : splitEdges[i].second->y;
-
-				if (curLeftY < leftPointY && leftPointY < maxLeft) {
-					per += leftPointY - curLeftY;
-					curLeftY = leftPointY;
-				}
-			}
-			else if(curLeftY < maxLeft){
-				per += (maxLeft - curLeftY);
-			}
-		}
-		if (numOfRight != verticalMesh.size() - 1) {
-			if (i < splitEdges.size()) {
-				auto rightPointY = splitEdges[i].first->x > splitEdges[i].second->x ? splitEdges[i].first->y : splitEdges[i].second->y;
-
-				if (curRightY < rightPointY && rightPointY < maxRight) {
-					per += rightPointY - curRightY;
-					curRightY = rightPointY;
-				}
-			}
-			else if (curRightY < maxRight) {
-				per += (maxRight - curRightY);
-			}
-		}
-
-		totalPer += per * per;
-	}
-
-	return totalPer;
 }
 
 std::pair<double, long long> Mesh::getOptimalCombinationForInternalPerimeter(double** horizontalPerimeters) {
@@ -961,7 +1028,87 @@ std::pair<double, long long> Mesh::getOptimalCombinationForInternalPerimeter(dou
 		}
 	}
 
-	return std::make_pair(optimal, optimalMask);
+	return { optimal, optimalMask };
+}
+
+std::vector<std::pair<Point*, Point*> > Mesh::getHorizontalEdges(Edge* leftEdge, Edge* rightEdge, int numOfFacesToSplit) {
+	vectorD* x = new vectorD(), * y = new vectorD();
+	vectorI edgesData;
+
+	int pointNum = 0;
+	auto cur = leftEdge;
+	do {
+		x->push_back(cur->v->pos->x);
+		y->push_back(cur->v->pos->y);
+		edgesData.push_back(pointNum);
+		pointNum++;
+
+		if (cur->next->sym != nullptr && cur->next != rightEdge && cur->next != rightEdge->sym) {
+			cur = cur->next->sym->next;
+		}
+		else {
+			cur = cur->next;
+		}
+	} while (cur->v != leftEdge->v && cur->sym != leftEdge);
+
+	Rotation::rotateFigure90(x, y);
+	std::reverse(x->begin(), x->end());
+	std::reverse(y->begin(), y->end());
+
+	auto data = PolygonData();
+	data.vertex_x = *x;
+	data.vertex_y = *y;
+	data.tryAddFace(edgesData.size(), edgesData);
+
+	auto testMesh = Mesh();
+	testMesh.convertFromPolygonDataOfConvexLeftTraversalPolygon(data, leftEdge->f->area * numOfFacesToSplit);
+	testMesh.splitByVerticalGrid();
+	auto splittedEdges = testMesh.splitFaces(leftEdge->f->area);
+
+	for (int i = 0; i < splittedEdges.size(); ++i) {
+		Rotation::rotatePoint90(splittedEdges[i].first);
+		Rotation::rotatePoint90(splittedEdges[i].second);
+	}
+
+	return splittedEdges;
+}
+
+void Mesh::connectPointsToEdges(std::vector<std::pair<Point*, Point*> > edges, Face* face) {
+	std::vector<std::pair<Vertex*, Vertex*> > vertexes = std::vector<std::pair<Vertex*, Vertex*> >();
+
+	for (int i = 0; i < edges.size(); ++i) {
+		Vertex* f = nullptr, * s = nullptr;
+		auto cur = face->e;
+		do {
+			if (isPointInEdge(cur->v, cur->next->v, edges[i].first)) {
+				f = splitEdge(cur, new Point{ edges[i].first->x ,  edges[i].first->y });
+				break;
+			}
+
+			cur = cur->next;
+
+		} while (cur->v != face->e->v);
+
+		cur = face->e;
+		do {
+			if (isPointInEdge(cur->v, cur->next->v, edges[i].second)) {
+				s = splitEdge(cur, new Point{ edges[i].second->x ,  edges[i].second->y });
+				break;
+			}
+
+			cur = cur->next;
+
+		} while (cur->v != face->e->v);
+
+		if (f != nullptr && s != nullptr) {
+			vertexes.push_back({ f, s });
+		}
+	}
+
+	for (int i = 0; i < vertexes.size(); ++i) {
+		connectVertexes(vertexes[i].first, vertexes[i].second);
+	}
+
 }
 
 void Mesh::splitMeshByMask(long long mask) {
@@ -990,7 +1137,7 @@ void Mesh::splitMeshByMask(long long mask) {
 		}
 		else if (prev != cur && cur == 1) {
 			auto edges = getHorizontalEdges(verticalMesh[i], verticalMesh[startZeroPos + 1], startZeroPos - i + 1);
-			edgesToAdd.push_back(std::make_pair(edges, i));
+			edgesToAdd.push_back({ edges, i });
 			for (int k = i + 1; k < startZeroPos + 1; ++k) {
 				edgesToRemove.push_back(k);
 				//	removeEdgeWithTempVertexes(verticalMesh[k]);
@@ -1001,7 +1148,7 @@ void Mesh::splitMeshByMask(long long mask) {
 
 	if (cur == 0) {
 		auto edges = getHorizontalEdges(verticalMesh[0], verticalMesh[startZeroPos + 1], startZeroPos + 1);
-		edgesToAdd.push_back(std::make_pair(edges, 0));
+		edgesToAdd.push_back({ edges, 0 });
 		for (int k = 1; k < startZeroPos + 1; ++k) {
 			edgesToRemove.push_back(k);
 			//	removeEdgeWithTempVertexes(verticalMesh[k]);
@@ -1016,52 +1163,316 @@ void Mesh::splitMeshByMask(long long mask) {
 	}
 }
 
-void Mesh::connectPointsToEdges(std::vector<std::pair<Point*, Point*> > edges, Face * face) {
-	std::vector<std::pair<Vertex*, Vertex*> > vertexes = std::vector<std::pair<Vertex*, Vertex*> >();
+std::pair<Point*,Point*> Mesh::findPointsV(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4, double S) {
+	//1-leftBottom
+	//2-leftTop
+	//3-rightTop
+	//4-rightBottom
+	auto coeff1 = findLineCoefficients(x4, y4, x1, y1), coeff2 = findLineCoefficients(x2, y2, x3, y3);
+	double a1 = std::get<0>(coeff1), b1 = std::get<1>(coeff1), c1 = std::get<2>(coeff1);
+	double a2 = std::get<0>(coeff2), b2 = std::get<1>(coeff2), c2 = std::get<2>(coeff2);
+	auto k1 = -b1;
+	auto k2 = -b2;
+	auto a = b1 * a2 - a1 * b2;
+	auto b = b2 * c1 - b1 * c2 + y1 * k2 * b1 + x1 * k2 * a1 - x2 * k1 * a2 - y2 * k1 * b2;
+	auto c = k1 * k2 * (x1 * y2 - x2 * y1) + x2 * k1 * c2 - x1 * k2 * c1;
+	auto c_pos = c + 2 * S * k1 * k2;
+	auto c_neg = c - 2 * S * k1 * k2;
 
-	for (int i = 0; i < edges.size(); ++i) {
-		Vertex* f = nullptr, * s = nullptr;
-		auto cur = face->e;
-		do {
-			if (isPointInEdge(cur->v, cur->next->v, edges[i].first)) {
-				f = splitEdge(cur, new Point{ edges[i].first->x ,  edges[i].first->y });
-				break;
-			}
+	auto roots1 = findRootsOfEquation(a, b, c_neg);
+	auto roots2 = findRootsOfEquation(a, b, c_pos);
 
-			cur = cur->next;
+	std::vector<double>* roots = new std::vector<double>();
+	addValidRootsToList(roots1, roots);
+	addValidRootsToList(roots2, roots);
 
-		} while (cur->v != face->e->v);
+	for (int i = 0; i < roots->size(); ++i) {
+		double c3 = (*roots)[i];
+		double x5 = (c3 * b2) / k2,
+			y5 = (c2 - c3 * a2) / k2,
+			x6 = (c3 * b1) / k1,
+			y6 = (c1 - c3 * a1) / k1;
 
-		cur = face->e;
-		do {
-			if (isPointInEdge(cur->v, cur->next->v, edges[i].second)) {
-				s = splitEdge(cur, new Point{ edges[i].second->x ,  edges[i].second->y });
-				break;
-			}
+		auto check_c3 = x5 * y6 - x6 * y5;
+		auto b3_check = x6 - x5;
+		auto a3_check = y5 - y6;
 
-			cur = cur->next;
+		if (abs(b3_check) > EPS && std::abs((check_c3 / b3_check) - c3) > EPS) {
+			continue;
+		}
+		else if (abs(a3_check) > EPS && ((x2 <= x5 && x3 <= x5) || (x2 >= x5 && x3 >= x5) || (x1 <= x6 && x4 <= x6) || (x1 >= x6 && x4 >= x6))) {
+			continue;
+		}
+		else {
+			return { new Point{x5, y5}, new Point{x6, y6} };
 
-		} while (cur->v != face->e->v);
-		
-		if (f != nullptr && s != nullptr) {
-			vertexes.push_back(std::make_pair(f, s));
 		}
 	}
 
+	return { nullptr, nullptr };
+}
+
+#pragma endregion Algorithm: Division of a convex polygon into parts equal in area by the orgonal grid
+
+#pragma region Methods used in the algorithm
+
+bool isEqual(double a, double b) {
+	return abs(a - b) < EPS;
+}
+
+bool isNotEqual(double a, double b) {
+	return abs(a - b) > EPS;
+}
+
+bool isGreater(double a, double b) {
+	return a - b > EPS;
+}
+
+bool isLess(double a, double b) {
+	return b - a > EPS;
+}
+// a Point is defined by its coordinates {int x, y;}
+//===================================================================
+
+
+// isLeft(): tests if a point is Left|On|Right of an infinite line.
+//    Input:  three points P0, P1, and P2
+//    Return: >0 for P2 left of the line through P0 and P1
+//            =0 for P2  on the line
+//            <0 for P2  right of the line
+//    See: Algorithm 1 "Area of Triangles and Polygons"
+inline double isLeft(Point* P0, Point* P1, Point* P2)
+{
+	return ((P1->x - P0->x) * (P2->y - P0->y)
+		- (P2->x - P0->x) * (P1->y - P0->y));
+}
+
+void rotate(Point* p)
+{
+	auto x = p->y;
+	auto y = p->x;
+
+	p->x = x;
+	p->y = y;
+}
+
+bool tryRotateVertexes(std::vector<Point*> vertexes) {
 	for (int i = 0; i < vertexes.size(); ++i) {
-		connectVertexes(vertexes[i].first, vertexes[i].second);
+		rotate(vertexes[i]);
 	}
 
+	return true;
 }
 
-void Mesh::removeEdgeWithTempVertexes(Edge* e) {
-	auto vertexes = removeEdge(e);
 
-	if (vertexes[0]->isTemp) {
-		removeVertex(vertexes[0]);
+
+// winding number test for a point in a polygon
+//      Input:   P = a point,
+//               V[] = vertex points of a polygon V[n+1] with V[n]=V[0]
+//      Return:  wn = the winding number (=0 only when P is outside)
+int Mesh::isPointInPolygon(Point *P)
+{
+	int    wn = 0;    // the  winding number counter
+	// loop through all edges of the polygon
+	for (int i = 0; i < originalVertexes.size(); i++) {   // edge from V[i] to  V[i+1]
+		if (isLess(originalVertexes[i]->pos->y, P->y) || isEqual(originalVertexes[i]->pos->y, P->y)) {          // start y <= P.y
+			if (isGreater(originalVertexes[(i + 1) % originalVertexes.size()]->pos->y, P->y))      // an upward crossing
+			{
+				double pos = isLeft(originalVertexes[i]->pos, originalVertexes[(i + 1) % originalVertexes.size()]->pos, P);
+				if (isEqual(pos, 0))
+					return 0;
+				if (isGreater(pos, 0))  // P left of  edge
+					++wn;            // have  a valid up intersect
+			}
+		}
+		else {                        // start y > P.y (no test needed)
+			if (isLess(originalVertexes[(i + 1) % originalVertexes.size()]->pos->y, P->y) || isEqual(originalVertexes[(i + 1) % originalVertexes.size()]->pos->y, P->y))     // a downward crossing
+			{
+				double pos = isLeft(originalVertexes[i]->pos, originalVertexes[(i + 1) % originalVertexes.size()]->pos, P);
+				if (isEqual(pos, 0))
+					return 0;
+				if (isLess(pos, 0))  // P right of  edge
+					--wn;            // have  a valid down intersect
+			}
+		}
+	}
+	return wn;
+}
+
+int Mesh::isPointInPolygonTest(Point* P)
+{
+	std::vector<Point*> rotated;
+	for (int i = 0; i < originalVertexes.size(); ++i) {
+		rotated.push_back(new Point{ originalVertexes[i]->pos->x, originalVertexes[i]->pos->y });
 	}
 
-	if (vertexes[1]->isTemp) {
-		removeVertex(vertexes[1]);
+	tryRotateVertexes(rotated);
+	rotate(P);
+
+	int    wn = 0;    // the  winding number counter
+	// loop through all edges of the polygon
+	for (int i = 0; i < rotated.size(); i++) {   // edge from V[i] to  V[i+1]
+		if (isLess(rotated[i]->y, P->y) || isEqual(rotated[i]->y, P->y)) {          // start y <= P.y
+			if (isGreater(rotated[(i + 1) % rotated.size()]->y, P->y))      // an upward crossing
+			{
+				double pos = isLeft(rotated[i], rotated[(i + 1) % rotated.size()], P);
+				if (isEqual(pos, 0))
+					return 0;
+				if (isGreater(pos, 0))  // P left of  edge
+					++wn;            // have  a valid up intersect
+			}
+		}
+		else {                        // start y > P.y (no test needed)
+			if (isLess(rotated[(i + 1) % rotated.size()]->y, P->y) || isEqual(rotated[(i + 1) % rotated.size()]->y, P->y))     // a downward crossing
+			{
+				double pos = isLeft(rotated[i], rotated[(i + 1) % rotated.size()], P);
+				if (isEqual(pos, 0))
+					return 0;
+				if (isLess(pos, 0))  // P right of  edge
+					--wn;            // have  a valid down intersect
+			}
+		}
+	}
+	return wn;
+}
+
+
+
+void Mesh::splitByVertical(double coord) {
+	std::map<Vertex*, int> vertexesToJoinMap;
+	std::vector<std::pair<Vertex*, int> > vertexesToJoin;
+	std::vector<std::pair<Edge*, Point*>> vertexesToAdd;
+	std::vector<std::pair<Vertex*, Vertex*>> edgesToAdd;
+
+	std::set<Edge*> visitedEdges;
+
+	for (int i = 0; i < this->E.size(); ++i) {
+		if (visitedEdges.find(this->E[i]) != visitedEdges.end())
+			continue;
+
+		auto startV = this->E[i]->v;
+		auto endV = this->E[i]->next->v;
+
+		if ((isLess(startV->pos->x, coord) && isGreater(endV->pos->x, coord)) || (isGreater(startV->pos->x, coord) && isLess(endV->pos->x, coord))) {
+
+			if (isEqual(startV->pos->y, endV->pos->y)) {
+
+				vertexesToAdd.push_back({ this->E[i], new Point{ coord, startV->pos->y } });
+			}
+			else {
+
+				vertexesToAdd.push_back({ this->E[i], new Point{ coord, this->findYByXAndTwoVertixes(startV, endV, coord) } });
+			}
+		}
+
+		if (isEqual(startV->pos->x, coord) && vertexesToJoinMap.find(startV) == vertexesToJoinMap.end())
+			vertexesToJoinMap.insert({ startV, 0 });
+		if (isEqual(endV->pos->x, coord) && vertexesToJoinMap.find(endV) == vertexesToJoinMap.end())
+			vertexesToJoinMap.insert({ endV, 0 });
+
+		if (isEqual(startV->pos->x, coord) && isEqual(endV->pos->x, coord)) {
+			vertexesToJoinMap[startV] = ++vertexesToJoinMap[startV];
+			vertexesToJoinMap[endV] = ++vertexesToJoinMap[endV];
+		}
+
+		visitedEdges.insert(this->E[i]);
+
+		if (this->E[i]->sym != nullptr)
+			visitedEdges.insert(this->E[i]->sym);
+	}
+
+	for (int i = 0; i < vertexesToAdd.size(); ++i) {
+		vertexesToJoinMap.insert({ this->splitEdge(vertexesToAdd[i].first, vertexesToAdd[i].second), 0 });
+	}
+
+	copy(vertexesToJoinMap.begin(), vertexesToJoinMap.end(), back_inserter(vertexesToJoin));
+	sort(vertexesToJoin.begin(), vertexesToJoin.end(), [](const std::pair<Vertex*, int>& p1, const std::pair<Vertex*, int>& p2)
+		{ return p1.first->pos->y > p2.first->pos->y; });
+
+	if (vertexesToJoin.size() > 0) {
+
+		vertexesToJoin[0].second = ++vertexesToJoin[0].second;
+		vertexesToJoin[vertexesToJoin.size() - 1].second = ++vertexesToJoin[vertexesToJoin.size() - 1].second;
+	}
+
+	for (int i = 1; i < vertexesToJoin.size(); ++i) {
+		auto cur = vertexesToJoin[i].first;
+		auto prev = vertexesToJoin[i - 1].first;
+
+		if (isPointInPolygon(new Point{ cur->pos->x,  cur->pos->y + ((prev->pos->y - cur->pos->y) / 2 )}) != 0) {
+			edgesToAdd.push_back({ prev, cur });
+		}
+	}
+
+	for (int i = 0; i < edgesToAdd.size(); ++i) {
+		this->connectVertexes(edgesToAdd[i].first, edgesToAdd[i].second);
 	}
 }
+
+void Mesh::splitHorizontal(double coord) {
+	std::map<Vertex*, int> vertexesToJoinMap;
+	std::vector<std::pair<Vertex*, int> > vertexesToJoin;
+	std::vector<std::pair<Edge*, Point*>> vertexesToAdd;
+	std::vector<std::pair<Vertex*, Vertex*>> edgesToAdd;
+
+	std::set<Edge*> visitedEdges;
+
+	for (int i = 0; i < this->E.size(); ++i) {
+		if (visitedEdges.find(this->E[i]) != visitedEdges.end())
+			continue;
+
+		auto startV = this->E[i]->v;
+		auto endV = this->E[i]->next->v;
+
+		if ((isLess(startV->pos->y, coord) && isGreater(endV->pos->y, coord)) || (isGreater(startV->pos->y, coord) && isLess(endV->pos->y, coord))) {
+			if (isEqual(startV->pos->x, endV->pos->x)) {
+				vertexesToAdd.push_back({ this->E[i], new Point{ startV->pos->x, coord } });
+			}
+			else {
+				vertexesToAdd.push_back({ this->E[i], new Point{ this->findXByYAndTwoVertixes(startV, endV, coord), coord } });
+			}
+		}
+
+		if (isEqual(startV->pos->y, coord) && vertexesToJoinMap.find(startV) == vertexesToJoinMap.end()) vertexesToJoinMap.insert({ startV, 0 });
+		if (isEqual(endV->pos->y, coord) && vertexesToJoinMap.find(endV) == vertexesToJoinMap.end()) vertexesToJoinMap.insert({ endV, 0 });
+
+		if (isEqual(startV->pos->y, coord) && isEqual(endV->pos->y, coord)) {
+			vertexesToJoinMap[startV] = ++vertexesToJoinMap[startV];
+			vertexesToJoinMap[endV] = ++vertexesToJoinMap[endV];
+		}
+
+		visitedEdges.insert(this->E[i]);
+
+		if (this->E[i]->sym != nullptr)
+			visitedEdges.insert(this->E[i]->sym);
+	}
+
+	for (int i = 0; i < vertexesToAdd.size(); ++i) {
+		vertexesToJoinMap.insert({ this->splitEdge(vertexesToAdd[i].first, vertexesToAdd[i].second), 0 });
+	}
+
+	copy(vertexesToJoinMap.begin(), vertexesToJoinMap.end(), back_inserter(vertexesToJoin));
+	sort(vertexesToJoin.begin(), vertexesToJoin.end(), [](const std::pair<Vertex*, int>& p1, const std::pair<Vertex*, int>& p2)
+		{ return p1.first->pos->x < p2.first->pos->x; });
+
+	if (vertexesToJoin.size() > 0) {
+
+		vertexesToJoin[0].second = ++vertexesToJoin[0].second;
+		vertexesToJoin[vertexesToJoin.size() - 1].second = ++vertexesToJoin[vertexesToJoin.size() - 1].second;
+	}
+
+	for (int i = 1; i < vertexesToJoin.size(); ++i) {
+		auto cur = vertexesToJoin[i].first;
+		auto prev = vertexesToJoin[i - 1].first;
+
+		if (isPointInPolygonTest(new Point{ prev->pos->x + ((cur->pos->x - prev->pos->x) / 2), cur->pos->y }) != 0) {
+			edgesToAdd.push_back({ prev, cur });
+		}
+	}
+
+	for (int i = 0; i < edgesToAdd.size(); ++i) {
+		this->connectVertexes(edgesToAdd[i].first, edgesToAdd[i].second);
+	}
+}
+
+#pragma endregion Algorithm: Division of a polygon of a part along an orthogonal grid with area restrictions
