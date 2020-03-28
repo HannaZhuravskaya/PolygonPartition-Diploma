@@ -91,7 +91,7 @@ public:
 
 	PolygonData convertToPolygonData();
 	void convertFromPolygonData(PolygonData data);
-	void convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data, double area);
+	void convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data);
 
 #pragma endregion
 

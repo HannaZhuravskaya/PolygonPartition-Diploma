@@ -155,140 +155,88 @@ std::vector<Vertex*> Mesh::removeEdge(Edge* e) {
 	return vertexes;
 }
 
+// Vertexes can be connected if there are edges that have beginning at these vertexes and belong to the same face.
 Edge* Mesh::connectVertexes(Vertex* v1, Vertex* v2) {
-	if ((v1->e->f != v2->e->f)
-		&& (v2->e->sym == nullptr || v1->e->f != v2->e->sym->f)
-		&& (v1->e->sym == nullptr || v2->e->f != v1->e->sym->f)
-		&& ((v1->e->sym == nullptr || v2->e->sym == nullptr) || v2->e->sym->f != v1->e->sym->f)) {
+	Edge* edgeOfv1 = nullptr;
+	Edge* edgeOfv2 = nullptr;
 
 #pragma region Edges from v1
-		std::map<Face*, Edge*> v1Faces;
+	std::map<Face*, Edge*> v1Faces;
 
-		Edge* firstEdge = nullptr; // edge which starts from v1
+	Edge* firstEdge = nullptr; // edge which starts from v1
 
-		// if edge in v1 starts from v1
-		if (v1->e->v == v1) {
-			firstEdge = v1->e;
-		} // if edge in v1 ends in v1
-		else if (v1->e->next->v == v1) {
-			firstEdge = v1->e->next;
-		}
-		else {
-			return nullptr;
-		}
+	// if edge in v1 starts from v1
+	if (v1->e->v == v1) {
+		firstEdge = v1->e;
+	} // if edge in v1 ends in v1
+	else if (v1->e->next->v == v1) {
+		firstEdge = v1->e->next;
+	}
+	else {
+		return nullptr;
+	}
 
-		v1Faces.insert({ firstEdge->f, firstEdge });
+	v1Faces.insert({ firstEdge->f, firstEdge });
 
-		//go to the right until return to the first edge or to the border of mesh
-		auto curr = firstEdge->sym;
-		while (curr != nullptr && curr != firstEdge->sym) {
-			v1Faces.insert({ curr->f, curr->next });
-			curr = curr->next->sym;
-		}
+	//go to the right until return to the first edge or to the border of mesh
+	auto curr = firstEdge->sym;
+	while (curr != nullptr && curr != firstEdge->sym) {
+		v1Faces.insert({ curr->f, curr->next });
+		curr = curr->next->sym;
+	}
 
-		//go to the left until return to the first edge or to the border of mesh
-		curr = firstEdge->prev->sym;
-		while (curr != nullptr && curr != firstEdge) {
-			v1Faces.insert({ curr->f, curr });
-			curr = curr->prev->sym;
-		}
-#pragma
+	//go to the left until return to the first edge or to the border of mesh
+	curr = firstEdge->prev->sym;
+	while (curr != nullptr && curr != firstEdge) {
+		v1Faces.insert({ curr->f, curr });
+		curr = curr->prev->sym;
+	}
+#pragma endregion
 
 #pragma region Edges from v2
-		std::map<Face*, Edge*> v2Faces;
+	std::map<Face*, Edge*> v2Faces;
 
-		// if edge in v2 starts from v2
-		if (v2->e->v == v2) {
-			firstEdge = v2->e;
-		} // if edge in v2 ends in v2
-		else if (v2->e->next->v == v2) {
-			firstEdge = v2->e->next;
-		}
-		else {
-			return nullptr;
-		}
-
-		v2Faces.insert({ firstEdge->f, firstEdge });
-
-		//go to the right until return to the first edge or to the border of mesh
-		curr = firstEdge->sym;
-		while (curr != nullptr && curr != firstEdge->sym) {
-			v2Faces.insert({ curr->f, curr });
-			curr = curr->next->sym;
-		}
-
-		//go to the left until return to the first edge or to the border of mesh
-		curr = firstEdge->prev->sym;
-		while (curr != nullptr && curr != firstEdge) {
-			v2Faces.insert({ curr->f, curr });
-			curr = curr->prev->sym;
-		}
-#pragma
-		std::vector<std::pair<Face*, Edge*>> inter;
-		Edge* edgeOfv1 = nullptr;
-		Edge* edgeOfv2 = nullptr;
-
-		for (auto var1 : v1Faces)
-		{
-			if (v2Faces.find(var1.first) != v2Faces.end()) {
-				inter.push_back(var1);
-				inter.push_back({var1.first, v2Faces[var1.first] });
-				edgeOfv1 = var1.second;
-				edgeOfv2 = v2Faces[var1.first];
-			}
-		}
-
-		if (inter.size() != 2)
-			return nullptr;
-
-
-		Edge* e1 = new Edge;
-		e1->numOfEdge = E.size();
-		Edge* e2 = new Edge;
-		e2->numOfEdge = E.size() + 1;
-		Face* newFace = new Face;
-		newFace->numOfFace = F.size();
-
-		E.push_back(e1);
-		E.push_back(e2);
-		F.push_back(newFace);
-
-		setEdge(e1, v2, edgeOfv1->f, edgeOfv2->prev, edgeOfv1, e2);
-		setEdge(e2, v1, newFace, edgeOfv1->prev, edgeOfv2, e1);
-
-		edgeOfv1->prev->next = e2;
-		edgeOfv1->prev = e1;
-
-		edgeOfv2->prev->next = e1;
-		edgeOfv2->prev = e2;
-
-		newFace->e = e2;
-		e1->f->e = e1;
-
-		auto cur = newFace->e->next;
-
-		//errror !!!!!
-		while (cur != newFace->e) {
-			if (cur->v == leftVertex) {
-				leftFace = newFace;
-			}
-
-			cur->f = newFace;
-			cur = cur->next;
-		}
-
-		if (cur->v == leftVertex) {
-			leftFace = newFace;
-		}
-
-		auto newArea = areaOfFace(newFace);
-		newFace->area = newArea;
-		e1->f->area = e1->f->area - newArea;
-
-		meshInnerPerimeter += 2 * getDistance(e1->v, e1->next->v);
-
-		return e1;
+	// if edge in v2 starts from v2
+	if (v2->e->v == v2) {
+		firstEdge = v2->e;
+	} // if edge in v2 ends in v2
+	else if (v2->e->next->v == v2) {
+		firstEdge = v2->e->next;
 	}
+	else {
+		return nullptr;
+	}
+
+	v2Faces.insert({ firstEdge->f, firstEdge });
+
+	//go to the right until return to the first edge or to the border of mesh
+	curr = firstEdge->sym;
+	while (curr != nullptr && curr != firstEdge->sym) {
+		v2Faces.insert({ curr->f, curr });
+		curr = curr->next->sym;
+	}
+
+	//go to the left until return to the first edge or to the border of mesh
+	curr = firstEdge->prev->sym;
+	while (curr != nullptr && curr != firstEdge) {
+		v2Faces.insert({ curr->f, curr });
+		curr = curr->prev->sym;
+	}
+#pragma endregion
+
+#pragma region Find edges that have beginning at vertexes v1 and v2 and belong to the same face
+	for (auto var1 : v1Faces)
+	{
+		if (v2Faces.find(var1.first) != v2Faces.end()) {
+
+			edgeOfv1 = var1.second;
+			edgeOfv2 = v2Faces[var1.first];
+		}
+	}
+
+	if (edgeOfv1 == nullptr || edgeOfv2 == nullptr)
+		return nullptr;
+#pragma endregion
 
 	Edge* e1 = new Edge;
 	e1->numOfEdge = E.size();
@@ -301,42 +249,41 @@ Edge* Mesh::connectVertexes(Vertex* v1, Vertex* v2) {
 	E.push_back(e2);
 	F.push_back(newFace);
 
-	/*auto v1Prev = findPrevEdge(v1, face);
-	auto v1Next = findNextEdge(v1, face);
-	auto v2Prev = findPrevEdge(v2, face);
-	auto v2Next = findNextEdge(v2, face);*/
+	setEdge(e1, v2, edgeOfv1->f, edgeOfv2->prev, edgeOfv1, e2);
+	setEdge(e2, v1, newFace, edgeOfv1->prev, edgeOfv2, e1);
 
-	setEdge(e1, v2, v1->e->f, v2->e->prev, v1->e, e2);
-	setEdge(e2, v1, newFace, v1->e->prev, v2->e, e1);
+	edgeOfv1->prev->next = e2;
+	edgeOfv1->prev = e1;
 
-	v1->e->prev->next = e2;
-	v1->e->prev = e1;
-
-	v2->e->prev->next = e1;
-	v2->e->prev = e2;
+	edgeOfv2->prev->next = e1;
+	edgeOfv2->prev = e2;
 
 	newFace->e = e2;
 	e1->f->e = e1;
 
-	auto cur = newFace->e->next;
+	// change face references for edges in newFace and calculate area of newFace.
+	double area = 0;
+	auto cur = newFace->e;
+	do {
+		area += (cur->v->pos->x * cur->next->v->pos->y - cur->v->pos->y * cur->next->v->pos->x);
 
-	//errror !!!!!
-	while (cur != newFace->e) {
 		if (cur->v == leftVertex) {
 			leftFace = newFace;
 		}
 
 		cur->f = newFace;
 		cur = cur->next;
-	}
+	} while (cur != newFace->e);
+
+	area /= 2;
+	area = abs(area);
 
 	if (cur->v == leftVertex) {
 		leftFace = newFace;
 	}
 
-	auto newArea = areaOfFace(newFace);
-	newFace->area = newArea;
-	e1->f->area = e1->f->area - newArea;
+	newFace->area = area;
+	e1->f->area = abs(e1->f->area - area);
 
 	meshInnerPerimeter += 2 * getDistance(e1->v, e1->next->v);
 
@@ -483,10 +430,15 @@ void Mesh::convertFromPolygonData(PolygonData data) {
 	}*/
 }
 
-void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data, double area) {
+void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data) {
 	leftVertex = nullptr;
 
+	double area = 0.0;
+	int size = data.getNumOfVertexes();
+
 	for (int i = 0; i < data.getNumOfVertexes(); ++i) {
+		area += data.vertex_x[i] * data.vertex_y[(i + 1) % size] - data.vertex_y[i] * data.vertex_x[(i + 1)%size];
+
 		Vertex* v = new Vertex;
 		v->pos = new Point{ data.vertex_x[i], data.vertex_y[i] };
 		v->numOfVertex = i;
@@ -502,6 +454,9 @@ void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data, 
 
 		this->originalVertexes.push_back(this->V[i]);
 	}
+
+	area /= 2;
+	area = abs(area);
 
 	Face* f = new Face;
 	f->area = area;
@@ -1061,7 +1016,7 @@ std::vector<std::pair<Point*, Point*> > Mesh::getHorizontalEdges(Edge* leftEdge,
 	data.tryAddFace(edgesData.size(), edgesData);
 
 	auto testMesh = Mesh();
-	testMesh.convertFromPolygonDataOfConvexLeftTraversalPolygon(data, leftEdge->f->area * numOfFacesToSplit);
+	testMesh.convertFromPolygonDataOfConvexLeftTraversalPolygon(data);
 	testMesh.splitByVerticalGrid();
 	auto splittedEdges = testMesh.splitFaces(leftEdge->f->area);
 
