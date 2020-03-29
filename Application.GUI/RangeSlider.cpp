@@ -751,6 +751,8 @@ void RangeSlider::mouseReleaseEvent(QMouseEvent* mouseEvent)
 	d->m_SelectedHandles = 0;
 
 	this->update();
+
+	emit sliderRealesed();
 }
 
  

@@ -103,6 +103,8 @@ Q_SIGNALS:
 	/// have changed.
 	void positionsChanged(int min, int max);
 
+	void sliderRealesed();
+
 public Q_SLOTS:
 	///
 	/// This property holds the slider's current minimum value.
