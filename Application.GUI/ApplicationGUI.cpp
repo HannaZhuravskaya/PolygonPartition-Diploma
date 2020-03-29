@@ -570,6 +570,11 @@ void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
 		toSave = test4;
 	}
 
+	if (toSave == "") {
+		QMessageBox::critical(this, "Error", "Can not save mesh in file.");
+		return;
+	}
+
 	std::ofstream out(file_name.toStdString());
 	out << toSave;
 	out.close();
