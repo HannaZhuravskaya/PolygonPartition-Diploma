@@ -4,6 +4,8 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QString>
+#include <QTabWidget>
+#include <QGraphicsEffect>
 
 
 #include <qevent.h>
@@ -19,6 +21,8 @@ private:
 	int xPos, yPos;
 	int xScale, yScale;
 	bool gridVisibility;
+
+	bool isHoverEffectEnabled;
 public:
 	DrawingArea(QWidget* parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
 
@@ -50,9 +54,16 @@ public:
 
 	void saveImage(char* fileName, int borderWidth = 1);
 
+	void setHoverEffectEnabled(bool isEnable = false);
+	void deleteAllEffects();
+
 private:
 	void setGrid();
 	void setDefaultPen();
 	QPoint AppToWidjetCoords(QPoint p);
 	QPoint WidjetToAppCoordes(QPoint p);
+
+protected:
+	void enterEvent(QEvent* ev) override;
+	void leaveEvent(QEvent* ev) override;
 };

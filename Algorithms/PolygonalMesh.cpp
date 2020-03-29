@@ -491,6 +491,149 @@ void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data) 
 
 #pragma endregion
 
+#pragma endregion
+
+std::vector<std::string> splitString(const std::string& stringToSplit, const std::string& regexPattern)
+{
+	std::vector<std::string> result;
+
+	const std::regex rgx(regexPattern);
+	std::sregex_token_iterator iter(stringToSplit.begin(), stringToSplit.end(), rgx, -1);
+
+	for (std::sregex_token_iterator end; iter != end; ++iter)
+	{
+		result.push_back(iter->str());
+	}
+
+	return result;
+}
+
+std::string Mesh::convertToString() {
+	std::stringstream ss;
+
+	ss << "V: " << V.size() << ", E: " << E.size() << ", F: " << F.size() << "\n";
+
+	for (int i = 0; i < V.size(); ++i) {
+		ss << "numOfVertex: " << V[i]->numOfVertex << ", (" << V[i]->pos->x << ", " << V[i]->pos->y << "), e: " << V[i]->e->numOfEdge
+			<< ", isDeleted: " << V[i]->isDeleted << ", " << "isTemp: " << V[i]->isTemp << "\n";
+	}
+
+	for (int i = 0; i < E.size(); ++i) {
+		ss << "numOfEdge: " << E[i]->numOfEdge << ", v: " << E[i]->v->numOfVertex << ", f: " << E[i]->f->numOfFace
+			<< ", prev: " << E[i]->numOfEdge << ", next: " << E[i]->next->numOfEdge;
+
+		if (E[i]->sym != nullptr) {
+			ss << ", sym: " << E[i]->sym->numOfEdge;
+		}
+
+		ss << ", isDeleted: " << E[i]->isDeleted << ", " << "isTemp: " << E[i]->isTemp << "\n";
+	}
+
+	for (int i = 0; i < F.size(); ++i) {
+		ss << "numOfFace: " << F[i]->numOfFace << ", e: " << F[i]->e->numOfEdge << ", isDeleted: " << F[i]->isDeleted << ", area: " << F[i]->area << "\n";
+	}
+
+	ss << originalVertexes.size() << "\n";
+	for (int i = 0; i < originalVertexes.size(); ++i) {
+		ss << originalVertexes[i]->numOfVertex;
+		if (i != originalVertexes.size() - 1)
+			ss << "->";
+		else
+			ss << "\n";
+	}
+
+	return ss.str();
+}
+
+Mesh* Mesh::convertFromString(std::string stringData) {
+	try {
+		std::stringstream ss(stringData);
+		std::string to;
+		std::vector<std::string> data;
+
+		Mesh* mesh = new Mesh();
+
+		std::getline(ss, to);
+		data = splitString(to, "V: |, E: |, F: ");
+
+		int numOfV = std::stoi(data.at(1));
+
+		for (int i = 0; i < numOfV; ++i) {
+			mesh->V.push_back(new Vertex());
+			mesh->V[i]->numOfVertex = i;
+		}
+
+		int numOfE = std::stoi(data.at(2));
+		for (int i = 0; i < numOfE; ++i) {
+			mesh->E.push_back(new Edge());
+			mesh->E[i]->numOfEdge = i;
+		}
+
+		int numOfF = std::stoi(data.at(3));
+		for (int i = 0; i < numOfF; ++i) {
+			mesh->F.push_back(new Face());
+			mesh->F[i]->numOfFace = i;
+		}
+
+		for (int i = 0; i < numOfV; ++i) {
+			std::getline(ss, to);
+			data = splitString(to, "[^0-9.]+");
+			int cnt = 1;
+
+			auto v = mesh->V[std::stoi(data.at(cnt++))];
+			v->pos = new Point{ std::stod(data.at(cnt++)), std::stod(data.at(cnt++)) };
+			v->e = mesh->E[std::stoi(data.at(cnt++))];
+			v->isDeleted = std::stoi(data.at(cnt++));
+			v->isTemp = std::stoi(data.at(cnt++));
+		}
+
+		for (int i = 0; i < numOfE; ++i) {
+			std::getline(ss, to);
+			data = splitString(to, "[^0-9]+");
+			int cnt = 1;
+
+			auto e = mesh->E[std::stoi(data.at(cnt++))];
+			e->v = mesh->V[std::stoi(data.at(cnt++))];
+			e->f = mesh->F[std::stoi(data.at(cnt++))];
+			e->prev = mesh->E[std::stoi(data.at(cnt++))];
+			e->next = mesh->E[std::stoi(data.at(cnt++))];
+
+			if (data.size() == 9) {
+				e->sym = mesh->E[std::stoi(data.at(cnt++))];
+			}
+
+			e->isDeleted = std::stoi(data.at(cnt++));
+			e->isTemp = std::stoi(data.at(cnt++));
+		}
+
+		for (int i = 0; i < numOfF; ++i) {
+			std::getline(ss, to);
+			data = splitString(to, "[^0-9.]+");
+			int cnt = 1;
+
+			auto f = mesh->F[std::stoi(data.at(cnt++))];
+			f->e = mesh->E[std::stoi(data.at(cnt++))];
+			f->isDeleted = std::stoi(data.at(cnt++));
+			f->area = std::stod(data.at(cnt++));
+		}
+
+		std::getline(ss, to);
+		int numOfOriginalVertexes = std::stoi(to);
+		std::getline(ss, to);
+		data = splitString(to, "[^0-9]+");
+		for (int i = 0; i < numOfOriginalVertexes; ++i) {
+			mesh->originalVertexes.push_back(mesh->V[std::stoi(data.at(i))]);
+		}
+
+		return mesh;
+	}
+	catch (...) {
+		return nullptr;
+	}
+}
+
+#pragma region Mesh-string Convertation
+
 #pragma region Computational Methods
 
 double Mesh::areaOfFace(Face* f) {

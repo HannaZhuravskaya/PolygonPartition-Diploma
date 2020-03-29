@@ -6,6 +6,7 @@ DrawingArea::DrawingArea(QWidget* parent, Qt::WindowFlags f) : QLabel(parent, f)
 	fillByPixmap();
 	setScale(10, 10);
 	setGridVisibility(false);
+	setHoverEffectEnabled();
 }
 
 bool DrawingArea::isPointInBounds(int x, int y) {
@@ -100,6 +101,11 @@ void DrawingArea::setX()
 	while (w->parent() != nullptr) {
 		try {
 			this->xPos += w->x();
+
+			QTabWidget* tab = dynamic_cast<QTabWidget*>(w);
+			if (tab != nullptr)
+				this->xPos += 2;
+
 			w = (QWidget*)(w->parent());
 		}
 		catch (std::exception) {
@@ -116,6 +122,11 @@ void DrawingArea::setY()
 	while (w->parent() != nullptr) {
 		try {
 			this->yPos += w->y();
+
+			QTabWidget* tab = dynamic_cast<QTabWidget*>(w);
+			if (tab != nullptr)
+				this->yPos += 26;
+
 			w = (QWidget*)(w->parent());
 		}
 		catch (std::exception) {
@@ -157,11 +168,11 @@ void  DrawingArea::mouseMoveEvent(QMouseEvent* event)
 	auto text = QString("X: %1, Y: %2")
 		.arg((double)(x) / xScale)
 		.arg((double)(this->height() - y) / yScale);
-	mouseCoordinates->setText(text);
-	mouseCoordinates->setVisible(true);
-	mouseCoordinates->setGeometry(x + 40, y + 40, 100, 20);
-	mouseCoordinates->setFrameShape(Box);
-	mouseCoordinates->raise();
+		mouseCoordinates->setText(text);
+		mouseCoordinates->setVisible(true);
+		mouseCoordinates->setGeometry(x + 40, y + 40, 100, 20);
+		mouseCoordinates->setFrameShape(Box);
+		mouseCoordinates->raise();
 }
 
 void DrawingArea::saveImage(char* fileName, int borderWidth)
@@ -174,6 +185,20 @@ void DrawingArea::saveImage(char* fileName, int borderWidth)
 	painter->drawPixmap(borderWidth, borderWidth, *pixmap);
 
 	pixmapWithBorder->toImage().save(QString(fileName));
+}
+
+void DrawingArea::setHoverEffectEnabled(bool isEnable)
+{
+	isHoverEffectEnabled = isEnable;
+	leaveEvent(nullptr);
+}
+
+void DrawingArea::deleteAllEffects()
+{
+	isHoverEffectEnabled = false;
+	auto effect = new QGraphicsColorizeEffect();
+	effect->setColor(QColor(0, 0, 0));
+	setGraphicsEffect(effect);
 }
 
 void DrawingArea::setGrid()
@@ -233,4 +258,22 @@ QPoint DrawingArea::LogicToPixelCoords(QPointF p, bool isWidjetCoords)
 	}
 
 	return pixelPoint;
+}
+
+void DrawingArea::enterEvent(QEvent* ev)
+{
+	if (isHoverEffectEnabled) {
+		auto effect = new QGraphicsColorizeEffect();
+		effect->setColor(QColor(0, 192, 0));
+		setGraphicsEffect(effect);
+	}
+}
+
+void DrawingArea::leaveEvent(QEvent* ev)
+{
+	if (isHoverEffectEnabled) {
+		auto effect = new QGraphicsColorizeEffect();
+		effect->setColor(QColor(0, 0, 192));
+		setGraphicsEffect(effect);
+	}
 }

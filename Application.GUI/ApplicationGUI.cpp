@@ -38,7 +38,11 @@ void ApplicationGUI::initializeControls()
 	ui.drawingArea_test_4->setGridVisibility(true);
 	ui.drawingArea_test_4->clearDrawArea();
 
-	connect(ui.btn_saveResults, &QPushButton::clicked, this, &ApplicationGUI::btn_saveResults);
+	connect(ui.btn_saveMeshAsText, &QPushButton::clicked, this, &ApplicationGUI::btn_saveMeshAsText);
+	connect(ui.btn_uploadMeshFromText, &QPushButton::clicked, this, &ApplicationGUI::btn_uploadMeshFromText);
+	connect(ui.btn_saveImages, &QPushButton::clicked, this, &ApplicationGUI::btn_saveImages);
+	connect(ui.btn_drawPoly, &QPushButton::clicked, this, &ApplicationGUI::btn_drawPoly);
+	connect(ui.btn_doAlgo, &QPushButton::clicked, this, &ApplicationGUI::btn_doAlgo);
 	////////////////////////////////
 	mouseCoordinates = new QLabel(this);
 	mouseCoordinates->setStyleSheet("QLabel { background-color : white;}");
@@ -63,12 +67,19 @@ void ApplicationGUI::initializeControls()
 			ui.sld_maxPosLabel->setText(QString::number(max / SLD_SCALE));
 			setSliderLabelsPosition();
 		});
+
+	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this,
+		[=]() {
+			btn_doAlgo(true);
+		});
 #pragma endregion
 
 #pragma region Mesh properties
 	ui.meshAngleDrawingArea->setGridVisibility(false);
 	connect(ui.btn_apply_angle, &QPushButton::clicked, this, &ApplicationGUI::btn_apply_angle_clicked);
 	connect(ui.btn_reset_angle, &QPushButton::clicked, this, &ApplicationGUI::btn_reset_angle_clicked);
+	ui.meshAngleDrawingArea->setX();
+	ui.meshAngleDrawingArea->setY();
 #pragma endregion
 }
 
@@ -94,6 +105,8 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			polygon = new a::Polygon(ui.spin_numOfSides->value());
 			polygonArea = 0;
 			anglePoints = std::make_pair(nullptr, nullptr);
+
+			isModeToSelectDrawingArea = false;
 		}
 		else {
 			activeGroupBox = "polygonProperties";
@@ -115,6 +128,8 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			polygon = nullptr;
 			ui.polygonDrawingArea->clearDrawArea();
 			anglePoints = std::make_pair(nullptr, nullptr);
+
+			isModeToSelectDrawingArea = false;
 		}
 	}
 	else if (grb_name == "areaProperties") {
@@ -126,7 +141,7 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.spin_numOfSides->setEnabled(false);
 
 			ui.lbl_polygonArea->setText(QString::number(polygonArea));
-			ui.sld_areaOfPart->setMaximum(polygonArea);
+			ui.sld_areaOfPart->setMaximum(polygonArea * 10);
 			ui.sld_areaOfPart->setEnabled(true);
 			sliderRangeChanged();
 
@@ -134,6 +149,8 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_apply_angle->setEnabled(true);
 			ui.btn_reset_angle->setEnabled(false);
 			anglePoints = std::make_pair(nullptr, nullptr);
+
+			isModeToSelectDrawingArea = false;
 		}
 	}
 	else if (grb_name == "meshProperties") {
@@ -147,6 +164,8 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.spin_meshAngle->setEnabled(false);
 			ui.btn_apply_angle->setEnabled(false);
 			ui.btn_reset_angle->setEnabled(true);
+
+			isModeToSelectDrawingArea = false;
 		}
 		else {
 			activeGroupBox = "meshProperties";
@@ -160,6 +179,8 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_reset_angle->setEnabled(false);
 			anglePoints = std::make_pair(nullptr, nullptr);
 			ui.meshAngleDrawingArea->clearDrawArea();
+
+			isModeToSelectDrawingArea = false;
 		}
 	}
 }
@@ -167,7 +188,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 void ApplicationGUI::addPointToPolygon(int x, int y)
 {
 	auto logicPoint = ui.polygonDrawingArea->PixelToLogicCoords(QPoint(x, y), false);
-	auto pixelPoint = ui.polygonDrawingArea->LogicToPixelCoords(logicPoint, false);
 
 	if (polygon != nullptr && polygon->tryAddPoint({ logicPoint.x(), logicPoint.y() })) {
 		ui.polygonDrawingArea->drawEllipse(QPoint(x, y), 5, false, Qt::black);
@@ -220,61 +240,9 @@ void ApplicationGUI::addPointToAngle(int x, int y)
 
 		setActiveGroupBox("meshProperties", true);
 
+		btn_doAlgo(true);
 		//convertToMesh();
-		//convertToMeshTEST();
 	}
-}
-
-void ApplicationGUI::convertToMeshTEST() {
-	vectorD* x = new vectorD{ 40, 14, 10, 12, 20, 29, 37 };
-	vectorD* y = new vectorD{ 45, 30, 21, 13, 10, 12, 29 };
-	vectorI* edges = new vectorI{ 0, 1, 2, 3, 4, 5, 6 };
-
-	//Rotation r = Rotation(ui.spin_meshAngle->value(), RotationDirection::Right);
-	//r.tryRotateFigure(x, y);
-
-	PolygonData rotatedData = PolygonData();
-	rotatedData.vertex_x = *x;
-	rotatedData.vertex_y = *y;
-	rotatedData.tryAddFace(edges->size(), *edges);
-
-	auto area = 577.0;
-	auto parts = 5;
-
-	drawPolygonMesh(ui.drawingArea_test, 2, rotatedData.vertex_x, rotatedData.vertex_y, rotatedData.edges, rotatedData.faces);
-
-	Mesh m = Mesh();
-	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(rotatedData, area);
-	m.F[0]->area = area;
-
-	m.splitByVerticalGrid();
-
-	auto SplittedByGridData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_2, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
-
-	auto splitedEdges = m.splitFaces(area / parts);
-
-	auto horisontalSplittedData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_3, 2, horisontalSplittedData.vertex_x, horisontalSplittedData.vertex_y, horisontalSplittedData.edges, horisontalSplittedData.faces);
-
-	//r.tryRrotateTheFigureBack(&horisontalSplittedData.vertex_x, &horisontalSplittedData.vertex_y);
-	drawPolygonMesh(ui.drawingArea_test_4, 2, horisontalSplittedData.vertex_x, horisontalSplittedData.vertex_y, horisontalSplittedData.edges, horisontalSplittedData.faces);
-
-	auto vert = m.removeEdge(m.E[37]);
-	m.removeVertex(vert[0]);
-	m.removeVertex(vert[1]);
-	vert = m.removeEdge(m.E[33]);
-	m.removeVertex(vert[0]);
-	m.removeVertex(vert[1]);
-	vert = m.removeEdge(m.E[25]);
-	m.removeVertex(vert[0]);
-	m.removeVertex(vert[1]);
-	auto testData = m.convertToPolygonData();
-
-	//x = 22.690840468013054
-	//auto y = 22.7;
-	m.splitEdge(m.E[1], new Point{ 10.8, m.findYByXAndTwoVertixes(m.V[1], m.V[2], 10.8) });
-	drawPolygonMesh(ui.polygonDrawingArea, 2, testData.vertex_x, testData.vertex_y, testData.edges, testData.faces);
 }
 
 bool ApplicationGUI::isInMeshAngleDrawingAreaBounds(int x, int y)
@@ -287,334 +255,7 @@ void ApplicationGUI::mouseMoveEvent(QMouseEvent* event)
 	mouseCoordinates->setVisible(false);
 }
 
-void ApplicationGUI::createDefaultPolygonMesh()
-{
-	vectorD* x = new vectorD();
-	vectorD* y = new vectorD();
-
-	vectorI faces;
-	vectorI edges;
-
-	x->push_back(10);
-	x->push_back(30);
-	x->push_back(20);
-	x->push_back(10);
-	x->push_back(20);
-	x->push_back(30);
-	x->push_back(40);
-	x->push_back(40);
-
-	y->push_back(10);
-	y->push_back(10);
-	y->push_back(20);
-	y->push_back(30);
-	y->push_back(40);
-	y->push_back(30);
-	y->push_back(30);
-	y->push_back(20);
-	/**x << 10, 30, 20, 10, 20, 30, 40, 40;
-	*y << 10, 10, 20, 30, 40, 30, 30, 20;*/
-	//edges << 0, 1, 2, 3, 1, 2, 5, 7, 2, 3, 4, 5, 5, 6, 7;
-	//faces << 0, 4, 8, 12, 15;
-
-	faces.push_back(0);
-	faces.push_back(4);
-	faces.push_back(8);
-	faces.push_back(12);
-	faces.push_back(15);
-
-	edges.push_back(0);
-	edges.push_back(1);
-	edges.push_back(2);
-	edges.push_back(3);
-	edges.push_back(1);
-	edges.push_back(2);
-	edges.push_back(5);
-	edges.push_back(7);
-	edges.push_back(2);
-	edges.push_back(3);
-	edges.push_back(4);
-	edges.push_back(5);
-	edges.push_back(5);
-	edges.push_back(6);
-	edges.push_back(7);
-
-	drawPolygonMesh(ui.drawingArea_test, 3, *x, *y, edges, faces);
-
-	Rotation rotation = Rotation(ui.spin_meshAngle->value(), Right);
-	rotation.tryRotateFigure(x, y);
-
-	//// in spin box central aligment!!!
-	drawPolygonMesh(ui.polygonDrawingArea, 10, *x, *y, edges, faces);
-}
-
-void ApplicationGUI::testMethod() {
-	Mesh m = Mesh();
-	//1. Allocate space for mesh elements.
-	m.E.resize(12);
-	m.V.resize(6);
-	m.F.resize(4);
-	for (int i = 0; i < 12; i++)
-		m.E[i] = new Edge;
-	for (int i = 0; i < 6; i++)
-		m.V[i] = new Vertex;
-	for (int i = 0; i < 4; i++)
-		m.F[i] = new Face;
-	//Build Tetrahedron continued. . .
-	//2. Connect all edge ptrs
-	//v f prev next sym
-	m.setEdge(m.E[0], m.V[0], m.F[0], m.E[2], m.E[1], m.E[11]);
-	m.setEdge(m.E[1], m.V[1], m.F[0], m.E[0], m.E[2], nullptr);
-	m.setEdge(m.E[2], m.V[4], m.F[0], m.E[1], m.E[0], nullptr);
-
-	m.setEdge(m.E[3], m.V[1], m.F[1], m.E[5], m.E[4], m.E[10]);
-	m.setEdge(m.E[4], m.V[2], m.F[1], m.E[3], m.E[5], nullptr);
-	m.setEdge(m.E[5], m.V[5], m.F[1], m.E[4], m.E[3], nullptr);
-
-	m.setEdge(m.E[6], m.V[0], m.F[2], m.E[8], m.E[7], nullptr);
-	m.setEdge(m.E[7], m.V[3], m.F[2], m.E[6], m.E[8], nullptr);
-	m.setEdge(m.E[8], m.V[2], m.F[2], m.E[7], m.E[6], m.E[9]);
-
-	m.setEdge(m.E[9], m.V[0], m.F[3], m.E[11], m.E[10], m.E[8]);
-	m.setEdge(m.E[10], m.V[2], m.F[3], m.E[9], m.E[11], m.E[3]);
-	m.setEdge(m.E[11], m.V[1], m.F[3], m.E[10], m.E[9], m.E[0]);
-
-	//3. Connect each face’s edge ptr
-	m.F[0]->e = m.E[0];
-	m.F[1]->e = m.E[3];
-	m.F[2]->e = m.E[7];
-	m.F[3]->e = m.E[9];
-
-	//Build Tetrahedron continued. . .
-		//4. Connect each vertex’s edge ptr
-	m.V[0]->e = m.E[0];
-	m.V[1]->e = m.E[1];
-	m.V[2]->e = m.E[8];
-	m.V[3]->e = m.E[7];
-	m.V[4]->e = m.E[2];
-	m.V[5]->e = m.E[5];
-
-	//5. Set other attribute information
-	m.V[0]->pos = new Point{ 10, 10 };
-	m.V[1]->pos = new Point{ 15, 15 };
-	m.V[2]->pos = new Point{ 20, 10 };
-	m.V[3]->pos = new Point{ 15, 5 };
-	m.V[4]->pos = new Point{ 5, 15 };
-	m.V[5]->pos = new Point{ 25, 15 };
-
-	m.V[0]->numOfVertex = 0;
-	m.V[1]->numOfVertex = 1;
-	m.V[2]->numOfVertex = 2;
-	m.V[3]->numOfVertex = 3;
-	m.V[4]->numOfVertex = 4;
-	m.V[5]->numOfVertex = 5;
-	//May also include colors, normals, texture coordinates, etc. . .*/* /
-
-	//auto data = m.convertToPolygonData();
-
-	//drawPolygonMesh(ui.drawingArea_test, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-
-	//m.connectVertexes(m.splitEdge(m.E[11], new Point{ 12.5, 12.5 }), m.splitEdge(m.E[2], new Point{ 7.5, 12.5 }));
-
-	//m.connectVertexes(m.splitEdge(m.E[6], new Point{ 12.5, 7.5 }), m.splitEdge(m.E[7], new Point{ 17.5, 7.5 }));
-
-	//auto data1 = m.convertToPolygonData();
-
-	//drawPolygonMesh(ui.polygonDrawingArea, 2, data1.vertex_x, data1.vertex_y, data1.edges, data1.faces);
-
-		///4 Triangle - dont work
-	/*vectorD* x = new vectorD();
-	vectorD* y = new vectorD();
-
-	vectorI faces;
-	vectorI edges;
-
-	x->push_back(10);
-	x->push_back(15);
-	x->push_back(20);
-	x->push_back(15);
-	x->push_back(5);
-	x->push_back(25);
-
-	y->push_back(10);
-	y->push_back(15);
-	y->push_back(10);
-	y->push_back(5);
-	y->push_back(15);
-	y->push_back(15);
-
-
-	faces.push_back(0);
-	faces.push_back(3);
-	faces.push_back(6);
-	faces.push_back(9);
-	faces.push_back(12);
-
-	edges.push_back(0);
-	edges.push_back(1);
-	edges.push_back(4);
-	edges.push_back(0);
-	edges.push_back(1);
-	edges.push_back(2);
-	edges.push_back(2);
-	edges.push_back(1);
-	edges.push_back(5);
-	edges.push_back(0);
-	edges.push_back(2);
-	edges.push_back(3);
-
-	PolygonData data = PolygonData();
-	data.edges = edges;
-	data.faces = faces;
-	data.vertex_x = *x;
-	data.vertex_y = *y;
-
-	drawPolygonMesh(ui.drawingArea_test, 2, *x, *y, edges, faces);
-
-	Mesh m = Mesh();
-	m.convertFromPolygonData(data);*/
-
-	//// 1 right traversal polygon
-	/*
-	polygon = new a::Polygon(4);
-	polygon->tryAddPoint({ 20, 20 });
-	polygon->tryAddPoint({ 10, 20 });
-	polygon->tryAddPoint({ 10, 10 });
-	polygon->tryAddPoint({ 20, 10 });
-	*/
-
-	//add and delete points
-	/*
-	//vectorD x = vectorD(polygon->getNumOfPoints());
-	//vectorD y = vectorD(polygon->getNumOfPoints());
-	//vectorI edges = vectorI(polygon->getNumOfPoints());
-
-
-	//for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
-	//	auto point = polygon->getPointAt(i);
-	//	x[i] = point.x;
-	//	y[i] = point.y;
-	//	edges[i] = i;
-	//}
-
-	//PolygonData data = PolygonData();
-	//data.vertex_x = x;
-	//data.vertex_y = y;
-	//data.tryAddFace(edges.size(), edges);
-	//drawPolygonMesh(ui.drawingArea_test, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-
-	//Mesh m = Mesh();
-	//m.convertFromPolygonDataTEST(data);
-	//m.F[0]->area = polygonArea;
-
-
-	////m.splitFaces(polygonArea / ui.spin_numOfParts->value());
-
-	//auto vToDelete = m.splitEdge(m.E[0], new Point{ 50, 50 });
-
-	//auto data1 = m.convertToPolygonData();
-	//drawPolygonMesh(ui.drawingArea_test_2, 2, data1.vertex_x, data1.vertex_y, data1.edges, data1.faces);
-
-
-	//m.removeVertex(vToDelete);
-	//auto data2 = m.convertToPolygonData();
-	//drawPolygonMesh(ui.polygonDrawingArea, 5, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
-	*/
-
-	/////WORKS WITH DRAWING POLYGON
-	//vectorD x = vectorD(polygon->getNumOfPoints());
-	//vectorD y = vectorD(polygon->getNumOfPoints());
-	//vectorI edges = vectorI(polygon->getNumOfPoints());
-
-
-	//for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
-	//	auto point = polygon->getPointAt(i);
-	//	x[i] = point.x;
-	//	y[i] = point.y;
-	//	edges[i] = i;
-	//}
-
-	//PolygonData data = PolygonData();
-	//data.vertex_x = x;
-	//data.vertex_y = y;
-	//data.tryAddFace(edges.size(), edges);
-	//drawPolygonMesh(ui.drawingArea_test, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-
-	//Mesh m = Mesh();
-	//m.convertFromPolygonDataOfConvexLeftTraversalPolygon(data, polygonArea);
-	//m.F[0]->area = polygonArea;
-	//
-	//
-	////m.splitFaces(polygonArea / ui.spin_numOfParts->value());
-	//auto edgeToDelete = m.connectVertexes(m.splitEdge(m.E[0], new Point{ 50, 50 }), m.splitEdge(m.E[1], new Point{20, 20}), m.F[0]);
-	//
-
-	//auto data1 = m.convertToPolygonData();
-	//drawPolygonMesh(ui.drawingArea_test_2, 2, data1.vertex_x, data1.vertex_y, data1.edges, data1.faces);
-
-
-	//auto vertexesToDelete = m.removeEdge(edgeToDelete);
-	//for (int i = 0; i < vertexesToDelete.size(); ++i) {
-	//	m.removeVertex(vertexesToDelete[i]);
-	//}
-	//
-	//auto data2 = m.convertToPolygonData();
-	//drawPolygonMesh(ui.polygonDrawingArea, 5, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
-
-
-//TEST WITH SPLIT BY GRID
-	/*vectorD x = { 6, 6, 4, 2, 1, 1, 1, 3 };
-	vectorD y = { 1, 3, 5, 5, 4, 3, 2, 1 };
-	vectorI edges = { 0, 1, 2, 3, 4, 5, 6, 7 };
-
-	PolygonData* data = new PolygonData();
-	data->vertex_x = x;
-	data->vertex_y = y;
-	data->tryAddFace(edges.size(), edges);
-	drawPolygonMesh(ui.drawingArea_test, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
-
-	Mesh* m = new Mesh();
-	m->convertFromPolygonDataOfConvexLeftTraversalPolygon(*data, 16.5);
-	m->splitByVerticalGrid();
-
-	auto data1 = m->convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_2, 2, data1.vertex_x, data1.vertex_y, data1.edges, data1.faces);*/
-
-	//WORKED POLYGON FROM UI WITHOUT ROTATE
-
-		/*vectorD x = vectorD(polygon->getNumOfPoints());
-		vectorD y = vectorD(polygon->getNumOfPoints());
-		vectorI edges = vectorI(polygon->getNumOfPoints());
-
-
-		for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
-			auto point = polygon->getPointAt(i);
-			x[i] = point.x;
-			y[i] = point.y;
-			edges[i] = i;
-		}
-
-		PolygonData data = PolygonData();
-		data.vertex_x = x;
-		data.vertex_y = y;
-		data.tryAddFace(edges.size(), edges);
-
-		Mesh m = Mesh();
-		m.convertFromPolygonDataOfConvexLeftTraversalPolygon(data, polygonArea);
-		m.F[0]->area = polygonArea;
-
-		m.splitByVerticalGrid();
-
-		auto data1 = m.convertToPolygonData();
-		drawPolygonMesh(ui.drawingArea_test, 2, data1.vertex_x, data1.vertex_y, data1.edges, data1.faces);
-
-		m.splitFaces(polygonArea / ui.spin_numOfParts->value());
-
-		auto data2 = m.convertToPolygonData();
-		drawPolygonMesh(ui.drawingArea_test_2, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);*/
-}
-
-void ApplicationGUI::convertToMesh()
+void ApplicationGUI::convertToSplittedMesh()
 {
 	vectorD* x = new vectorD(polygon->getNumOfPoints());
 	vectorD* y = new vectorD(polygon->getNumOfPoints());
@@ -648,7 +289,7 @@ void ApplicationGUI::convertToMesh()
 	drawPolygonMesh(ui.drawingArea_test, 2, rotatedData.vertex_x, rotatedData.vertex_y, rotatedData.edges, rotatedData.faces);
 
 	Mesh m = Mesh();
-	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(rotatedData, polygonArea);
+	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(rotatedData);
 	m.F[0]->area = polygonArea;
 
 	m.splitByVerticalGrid();
@@ -707,19 +348,17 @@ void ApplicationGUI::setSliderLabelsPosition()
 {
 	auto w = ui.sld_areaOfPart->width();
 
-
-	ui.sld_minPosLabel->setGeometry(10 + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * w), 40, 30, 16);
-
+	ui.sld_minPosLabel->setGeometry(10 + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * w), 40, 40, 16);
 
 	QRect d = ui.sld_maxPosLabel->geometry();
 	QRect droppedRect = QRect(d.left(), 40, d.width(), d.height());
 
 	if (droppedRect.intersects(ui.sld_minPosLabel->geometry()))
 	{
-		ui.sld_maxPosLabel->setGeometry(((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * w) + 10, 0, 30, 16);
+		ui.sld_maxPosLabel->setGeometry(((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * w) + 10, 0, 40, 16);
 	}
 	else {
-		ui.sld_maxPosLabel->setGeometry(((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * w) + 10, 40, 30, 16);
+		ui.sld_maxPosLabel->setGeometry(((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * w) + 10, 40, 40, 16);
 	}
 }
 
@@ -741,11 +380,6 @@ void ApplicationGUI::btn_apply_angle_clicked(bool checked)
 void ApplicationGUI::btn_reset_angle_clicked(bool checked)
 {
 	setActiveGroupBox("meshProperties", false);
-}
-
-void ApplicationGUI::btn_saveResults(bool checked)
-{
-	ui.polygonDrawingArea->saveImage("Polygon.png", 1);
 }
 
 void ApplicationGUI::calculatePolygonProperties()
@@ -784,15 +418,269 @@ void ApplicationGUI::mousePressEvent(QMouseEvent* event)
 	if (event->button() == Qt::LeftButton) {
 
 		auto point = event->pos();
+		if (isModeToSelectDrawingArea) {
+			if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.polygonDrawingArea);
+			}
+			else if (ui.drawingArea_test->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.drawingArea_test);
+			}
+			else if (ui.drawingArea_test_2->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.drawingArea_test_2);
+			}
+			else if (ui.drawingArea_test_3->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.drawingArea_test_3);
+			}
+			else if (ui.drawingArea_test_4->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.drawingArea_test_4);
+			}
+		}
+		else {
+			if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
+				addPointToPolygon(point.x(), point.y());
+			}
+			else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y())) {
+				addPointToAngle(point.x(), point.y());
+			}
+			else if (ui.drawingArea_test->isPointInBounds(point.x(), point.y())) {
+				ui.drawingArea_test->drawEllipse(point, 10, false);
+			}
+		}
+	}
+}
 
-		if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
-			addPointToPolygon(point.x(), point.y());
+void ApplicationGUI::btn_saveImages(bool checked)
+{
+	ui.polygonDrawingArea->saveImage("Polygon.png", 1);
+	ui.drawingArea_test->saveImage("Step_1.png", 1);
+	ui.drawingArea_test_2->saveImage("Step_2.png", 1);
+	ui.drawingArea_test_3->saveImage("Step_3.png", 1);
+	ui.drawingArea_test_4->saveImage("Step_4.png", 1);
+}
+
+void ApplicationGUI::btn_drawPoly(bool checked)
+{
+	polygon = new a::Polygon(10);
+
+	QPoint p;
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 55.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 50.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 45.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 35.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 35.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 25.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 15.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 5.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 15.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 60.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+}
+
+PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
+	vectorD* x = new vectorD(polygon->getNumOfPoints());
+	vectorD* y = new vectorD(polygon->getNumOfPoints());
+	vectorI* edges = new vectorI(polygon->getNumOfPoints());
+
+	if (polygon->isLeftTraversal) {
+		for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
+			auto point = polygon->getPointAt(i);
+			(*x)[i] = point.x;
+			(*y)[i] = point.y;
+			(*edges)[i] = i;
 		}
-		else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y())) {
-			addPointToAngle(point.x(), point.y());
+	}
+	else {
+		for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
+			auto point = polygon->getPointAt(polygon->getNumOfPoints() - 1 - i);
+			(*x)[i] = point.x;
+			(*y)[i] = point.y;
+			(*edges)[i] = polygon->getNumOfPoints() - 1 - i;
 		}
-		else if (ui.drawingArea_test->isPointInBounds(point.x(), point.y())) {
-			ui.drawingArea_test->drawEllipse(point, 10, false);
-		}
+	}
+
+	PolygonData * data = new PolygonData();
+	data->vertex_x = *x;
+	data->vertex_y = *y;
+	data->tryAddFace(edges->size(), *edges);
+
+	return data;
+}
+
+void ApplicationGUI::btn_doAlgo(bool checked)
+{
+	if (anglePoints.first == nullptr || anglePoints.second == nullptr)
+		return;
+
+	auto data = convertPolygonToPolygonData();
+
+	drawPolygonMesh(ui.drawingArea_test, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
+
+	Mesh m = Mesh();
+	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
+	polygonDrawingAreaMesh = m.convertToString();
+
+	for (int i = 5; i <= 100; i += 10) {
+		m.splitByVertical(i);
+		m.splitHorizontal(i);
+	}
+
+	test2 = m.convertToString();
+
+	auto SplittedByGridData = m.convertToPolygonData();
+	drawPolygonMesh(ui.drawingArea_test_2, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
+}
+
+void ApplicationGUI::btn_saveMeshAsText(bool checked) {
+	QMessageBox::information(this, "", "Select the area from which you want to save mesh");
+	setControlsDependsOnSelectingMode(true);
+	connect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveMeshAsText);
+}
+
+void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
+	disconnect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveMeshAsText);
+	setControlsDependsOnSelectingMode(false);
+
+	QString file_name = QFileDialog::getSaveFileName(this, "MeshData", QDir::homePath(), "Text files(*.txt)");
+
+	std::string toSave = "";
+
+	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
+		 toSave =  polygonDrawingAreaMesh;
+	}
+	else if (drawingAreaOfMesh == ui.drawingArea_test) {
+		toSave = test1;
+	}
+	else if (drawingAreaOfMesh == ui.drawingArea_test_2) {
+		toSave = test2;
+	}
+	else if (drawingAreaOfMesh == ui.drawingArea_test_3) {
+		toSave = test3;
+	}
+	else if (drawingAreaOfMesh == ui.drawingArea_test_4) {
+		toSave = test4;
+	}
+
+	std::ofstream out(file_name.toStdString());
+	out << toSave;
+	out.close();
+}
+
+void ApplicationGUI::btn_uploadMeshFromText(bool checked) {
+	QMessageBox::information(this, "", "Select the area in which you want to show mesh");
+	setControlsDependsOnSelectingMode(true);
+	connect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::uploadMeshFromText);
+}
+
+void ApplicationGUI::uploadMeshFromText(DrawingArea* drawingAreaOfMesh) {
+	disconnect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::uploadMeshFromText);
+	setControlsDependsOnSelectingMode(false);
+	
+	QString file_name = QFileDialog::getOpenFileName(this, "Choose PolygonalMesh source", QDir::homePath());
+
+	std::ifstream in(file_name.toStdString());
+	std::string str((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+
+	auto mesh = Mesh::convertFromString(str);
+	if (mesh == nullptr) {
+		QMessageBox::critical(this, "Error", "Can not be converted into polygonal mesh");
+		return;
+	}
+
+	auto data = mesh->convertToPolygonData();
+	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
+		drawPolygonMesh(drawingAreaOfMesh, 4, data.vertex_x, data.vertex_y, data.edges, data.faces);
+	}
+	else if (drawingAreaOfMesh == ui.drawingArea_test) {
+		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+	}
+	else if (drawingAreaOfMesh == ui.drawingArea_test_2) {
+		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+	}
+	else if (drawingAreaOfMesh == ui.drawingArea_test_3) {
+		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+	}
+	else if (drawingAreaOfMesh == ui.drawingArea_test_4) {
+		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+	}
+}
+
+void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea)
+{
+	this->isModeToSelectDrawingArea = isModeToSelectDrawingArea;
+
+	if (isModeToSelectDrawingArea) {
+		controlsStatesBeforeSelectingMode.clear();
+
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_reset->isEnabled());
+		ui.btn_reset->setEnabled(false);
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_apply->isEnabled());
+		ui.btn_apply->setEnabled(false);
+
+		controlsStatesBeforeSelectingMode.push_back(ui.spin_numOfSides->isEnabled());
+		ui.spin_numOfSides->setEnabled(false);
+
+		controlsStatesBeforeSelectingMode.push_back(ui.spin_meshAngle->isEnabled());
+		ui.spin_meshAngle->setEnabled(false);
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_apply_angle->isEnabled());
+		ui.btn_apply_angle->setEnabled(false);
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_reset_angle->isEnabled());
+		ui.btn_reset_angle->setEnabled(false);
+
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_saveImages->isEnabled());
+		ui.btn_saveImages->setEnabled(false);
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_saveMeshAsText->isEnabled());
+		ui.btn_saveMeshAsText->setEnabled(false);
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_uploadMeshFromText->isEnabled());
+		ui.btn_uploadMeshFromText->setEnabled(false);
+
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_drawPoly->isEnabled());
+		ui.btn_drawPoly->setEnabled(false);
+		controlsStatesBeforeSelectingMode.push_back(ui.btn_doAlgo->isEnabled());
+		ui.btn_doAlgo->setEnabled(false);
+
+		controlsStatesBeforeSelectingMode.push_back(ui.sld_areaOfPart->isEnabled());
+		ui.sld_areaOfPart->setEnabled(false);
+
+		ui.polygonDrawingArea->setHoverEffectEnabled(true);
+		ui.drawingArea_test->setHoverEffectEnabled(true);
+		ui.drawingArea_test_2->setHoverEffectEnabled(true);
+		ui.drawingArea_test_3->setHoverEffectEnabled(true);
+		ui.drawingArea_test_4->setHoverEffectEnabled(true);
+	}
+	else {
+		int cnt = 0;
+
+		ui.btn_reset->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+		ui.btn_apply->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+
+		ui.spin_numOfSides->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+
+		ui.spin_meshAngle->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+		ui.btn_apply_angle->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+		ui.btn_reset_angle->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+
+		ui.btn_saveImages->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+		ui.btn_saveMeshAsText->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+		ui.btn_uploadMeshFromText->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+
+		ui.btn_drawPoly->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+		ui.btn_doAlgo->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+
+		ui.sld_areaOfPart->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
+
+		ui.polygonDrawingArea->deleteAllEffects();
+		ui.drawingArea_test->deleteAllEffects();
+		ui.drawingArea_test_2->deleteAllEffects();
+		ui.drawingArea_test_3->deleteAllEffects();
+		ui.drawingArea_test_4->deleteAllEffects();
 	}
 }

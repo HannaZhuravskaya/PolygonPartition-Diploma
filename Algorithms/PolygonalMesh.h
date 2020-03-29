@@ -10,6 +10,8 @@
 #include "PolygonData.h"
 #include<vector>
 #include<map>
+#include <sstream>
+#include <regex>
 
 typedef  Algorithms::Point Point;
 
@@ -94,6 +96,13 @@ public:
 	void convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data);
 
 #pragma endregion
+
+#pragma endregion
+
+	std::string convertToString();
+	static Mesh* convertFromString(std::string stringData);
+
+#pragma region Mesh-string Convertation
 
 #pragma region Computational Methods
 
