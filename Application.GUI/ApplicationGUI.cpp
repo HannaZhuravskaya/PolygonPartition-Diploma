@@ -40,7 +40,7 @@ void ApplicationGUI::initializeControls()
 
 	connect(ui.btn_saveMeshAsText, &QPushButton::clicked, this, &ApplicationGUI::btn_saveMeshAsText);
 	connect(ui.btn_uploadMeshFromText, &QPushButton::clicked, this, &ApplicationGUI::btn_uploadMeshFromText);
-	connect(ui.btn_saveImages, &QPushButton::clicked, this, &ApplicationGUI::btn_saveImages);
+	connect(ui.btn_saveImages, &QPushButton::clicked, this, &ApplicationGUI::btn_saveAsImage);
 	connect(ui.btn_drawPoly, &QPushButton::clicked, this, &ApplicationGUI::btn_drawPoly);
 	connect(ui.btn_doAlgo, &QPushButton::clicked, this, &ApplicationGUI::btn_doAlgo);
 	////////////////////////////////
@@ -81,6 +81,8 @@ void ApplicationGUI::initializeControls()
 	ui.meshAngleDrawingArea->setX();
 	ui.meshAngleDrawingArea->setY();
 #pragma endregion
+
+	isHintForSelectDrawingAreaShowned = false;
 }
 
 void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
@@ -449,15 +451,6 @@ void ApplicationGUI::mousePressEvent(QMouseEvent* event)
 	}
 }
 
-void ApplicationGUI::btn_saveImages(bool checked)
-{
-	ui.polygonDrawingArea->saveImage("Polygon.png", 1);
-	ui.drawingArea_test->saveImage("Step_1.png", 1);
-	ui.drawingArea_test_2->saveImage("Step_2.png", 1);
-	ui.drawingArea_test_3->saveImage("Step_3.png", 1);
-	ui.drawingArea_test_4->saveImage("Step_4.png", 1);
-}
-
 void ApplicationGUI::btn_drawPoly(bool checked)
 {
 	polygon = new a::Polygon(10);
@@ -540,7 +533,10 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 }
 
 void ApplicationGUI::btn_saveMeshAsText(bool checked) {
-	QMessageBox::information(this, "", "Select the area from which you want to save mesh");
+	if (!isHintForSelectDrawingAreaShowned) {
+		isHintForSelectDrawingAreaShowned = true;
+		QMessageBox::information(this, "", "Select the area...");
+	}
 	setControlsDependsOnSelectingMode(true);
 	connect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveMeshAsText);
 }
@@ -549,12 +545,17 @@ void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
 	disconnect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveMeshAsText);
 	setControlsDependsOnSelectingMode(false);
 
-	QString file_name = QFileDialog::getSaveFileName(this, "MeshData", QDir::homePath(), "Text files(*.txt)");
+	QString file_name = QFileDialog::getSaveFileName(this, "Save Text File", QDir::homePath(), "Text files(*.txt)");
+	
+	if (file_name.isEmpty()) {
+		QMessageBox::critical(this, "Error", "File name can not be empty");
+		return;
+	}
 
 	std::string toSave = "";
 
 	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
-		 toSave =  polygonDrawingAreaMesh;
+		toSave = polygonDrawingAreaMesh;
 	}
 	else if (drawingAreaOfMesh == ui.drawingArea_test) {
 		toSave = test1;
@@ -575,7 +576,10 @@ void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
 }
 
 void ApplicationGUI::btn_uploadMeshFromText(bool checked) {
-	QMessageBox::information(this, "", "Select the area in which you want to show mesh");
+	if (!isHintForSelectDrawingAreaShowned) {
+		isHintForSelectDrawingAreaShowned = true;
+		QMessageBox::information(this, "", "Select the area...");
+	}
 	setControlsDependsOnSelectingMode(true);
 	connect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::uploadMeshFromText);
 }
@@ -599,18 +603,32 @@ void ApplicationGUI::uploadMeshFromText(DrawingArea* drawingAreaOfMesh) {
 	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
 		drawPolygonMesh(drawingAreaOfMesh, 4, data.vertex_x, data.vertex_y, data.edges, data.faces);
 	}
-	else if (drawingAreaOfMesh == ui.drawingArea_test) {
+	else  {
 		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
 	}
-	else if (drawingAreaOfMesh == ui.drawingArea_test_2) {
-		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+}
+
+void ApplicationGUI::btn_saveAsImage(bool checked)
+{
+	if (!isHintForSelectDrawingAreaShowned) {
+		isHintForSelectDrawingAreaShowned = true;
+		QMessageBox::information(this, "", "Select the area...");
 	}
-	else if (drawingAreaOfMesh == ui.drawingArea_test_3) {
-		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-	}
-	else if (drawingAreaOfMesh == ui.drawingArea_test_4) {
-		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-	}
+	setControlsDependsOnSelectingMode(true);
+	connect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveDrawingAreaAsImage);
+}
+
+void ApplicationGUI::saveDrawingAreaAsImage(DrawingArea* drawingAreaOfMesh)
+{
+	disconnect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveDrawingAreaAsImage);
+	setControlsDependsOnSelectingMode(false);
+
+	QString file_name = QFileDialog::getSaveFileName(this, "Save Image File", QDir::homePath(), "Images (*.png)");
+	
+	if(file_name.isEmpty())
+		QMessageBox::critical(this, "Error", "File name can not be empty");
+	else
+		drawingAreaOfMesh->saveImage(file_name, 1);
 }
 
 void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea)

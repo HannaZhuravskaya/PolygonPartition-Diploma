@@ -39,11 +39,12 @@ protected:
 	void areaOfPartRangeChanged(int min, int max);
 	void calculatePolygonProperties();
 
-	void btn_saveImages(bool checked);
+	void btn_saveAsImage(bool checked);
 	void btn_drawPoly(bool checked);
 	void btn_doAlgo(bool checked);
 	void btn_saveMeshAsText(bool checked);
 	void btn_uploadMeshFromText(bool checked);
+	void saveDrawingAreaAsImage(DrawingArea* drawingAreaOfMesh);
 	void saveMeshAsText(DrawingArea* drawingAreaOfMesh);
 	void uploadMeshFromText(DrawingArea* drawingAreaOfMesh);
 
@@ -86,6 +87,7 @@ private:
 
 	bool isModeToSelectDrawingArea;
 	std::vector<bool> controlsStatesBeforeSelectingMode;
+	bool isHintForSelectDrawingAreaShowned;
 
 	void setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea);
 
