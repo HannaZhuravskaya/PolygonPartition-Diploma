@@ -52,7 +52,7 @@ public:
 	void setMouseTracking(bool isMouseTracking);
 	void mouseMoveEvent(QMouseEvent* event);
 
-	void saveImage(char* fileName, int borderWidth = 1);
+	void saveImage(QString fileName, int borderWidth = 1);
 
 	void setHoverEffectEnabled(bool isEnable = false);
 	void deleteAllEffects();

@@ -7,6 +7,7 @@ DrawingArea::DrawingArea(QWidget* parent, Qt::WindowFlags f) : QLabel(parent, f)
 	setScale(10, 10);
 	setGridVisibility(false);
 	setHoverEffectEnabled();
+	mouseCoordinates = nullptr;
 }
 
 bool DrawingArea::isPointInBounds(int x, int y) {
@@ -175,7 +176,7 @@ void  DrawingArea::mouseMoveEvent(QMouseEvent* event)
 		mouseCoordinates->raise();
 }
 
-void DrawingArea::saveImage(char* fileName, int borderWidth)
+void DrawingArea::saveImage(QString fileName, int borderWidth)
 {
 	auto pixmapWithBorder = new QPixmap(pixmap->width() + borderWidth * 2, pixmap->height() + borderWidth * 2);
 	
@@ -184,7 +185,7 @@ void DrawingArea::saveImage(char* fileName, int borderWidth)
 	painter->drawRect(0, 0, pixmapWithBorder->width(), pixmapWithBorder->height());
 	painter->drawPixmap(borderWidth, borderWidth, *pixmap);
 
-	pixmapWithBorder->toImage().save(QString(fileName));
+	pixmapWithBorder->toImage().save(fileName);
 }
 
 void DrawingArea::setHoverEffectEnabled(bool isEnable)
