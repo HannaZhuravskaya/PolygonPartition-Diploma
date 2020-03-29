@@ -59,12 +59,14 @@ void ApplicationGUI::initializeControls()
 	connect(ui.sld_areaOfPart, &RangeSlider::minimumPositionChanged, this,
 		[=](int min) {
 			ui.sld_minPosLabel->setText(QString::number(min / SLD_SCALE));
+			ui.lbl_minAreaOfPart->setText(QString::number(min / SLD_SCALE));
 			setSliderLabelsPosition();
 		});
 
 	connect(ui.sld_areaOfPart, &RangeSlider::maximumPositionChanged, this,
 		[=](int max) {
 			ui.sld_maxPosLabel->setText(QString::number(max / SLD_SCALE));
+			ui.lbl_maxAreaOfPart->setText(QString::number(max / SLD_SCALE));
 			setSliderLabelsPosition();
 		});
 
@@ -349,18 +351,21 @@ void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoint
 void ApplicationGUI::setSliderLabelsPosition()
 {
 	auto w = ui.sld_areaOfPart->width();
+	auto lbl_w = 40;
+	auto lbl_h = 16;
+	auto offset = 10;
 
-	ui.sld_minPosLabel->setGeometry(10 + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * w), 40, 40, 16);
+	ui.sld_minPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * (w- lbl_w)), 40, lbl_w, lbl_h);
 
 	QRect d = ui.sld_maxPosLabel->geometry();
 	QRect droppedRect = QRect(d.left(), 40, d.width(), d.height());
 
 	if (droppedRect.intersects(ui.sld_minPosLabel->geometry()))
 	{
-		ui.sld_maxPosLabel->setGeometry(((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * w) + 10, 0, 40, 16);
+		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w- lbl_w)), 0, lbl_w, lbl_h);
 	}
 	else {
-		ui.sld_maxPosLabel->setGeometry(((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * w) + 10, 40, 40, 16);
+		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w- lbl_w)), 40, lbl_w, lbl_h);
 	}
 }
 
@@ -408,10 +413,15 @@ void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
 	if (min == max && min == 0) {
 		ui.sld_minPosLabel->setText("");
 		ui.sld_maxPosLabel->setText("");
+		ui.lbl_minAreaOfPart->setText("");
+		ui.lbl_maxAreaOfPart->setText("");
 	}
 	else {
 		ui.sld_minPosLabel->setText(QString::number(min / SLD_SCALE));
 		ui.sld_maxPosLabel->setText(QString::number(max / SLD_SCALE));
+		ui.lbl_minAreaOfPart->setText(QString::number(min / SLD_SCALE));
+		ui.lbl_maxAreaOfPart->setText(QString::number(max / SLD_SCALE));
+		setSliderLabelsPosition();
 	}
 }
 
