@@ -2,14 +2,6 @@
 #include "framework.h"
 #include "Polygon.h"
 
-// This is an example of an exported variable
-//ALGORITHMS_API int nAlgorithms=0;
-//
-//// This is an example of an exported function.
-//ALGORITHMS_API int fnAlgorithms(void)
-//{
-//    return 5;
-//}
 using namespace Algorithms;
 
 Polygon::Polygon() {
@@ -80,7 +72,7 @@ double Polygon::getPerimeter()
 	p1 = points.at(numOfSides - 1);
 	p2 = points.at(0);
 
-	double perimeter = sqrt((p1.x - p2.x)*(p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
+	double perimeter = sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
 
 	for (int i = 0; i < numOfSides - 1; ++i) {
 		p1 = points.at(i);
@@ -124,8 +116,8 @@ bool Polygon::isConvex()
 	for (int i = 0; i < numOfSides; i++)
 	{
 		double cross_product = crossProductLength(
-			points.at(i), 
-			points.at((i + 1) % numOfSides), 
+			points.at(i),
+			points.at((i + 1) % numOfSides),
 			points.at((i + 2) % numOfSides));
 
 		if (cross_product < 0)
@@ -164,3 +156,167 @@ Point Polygon::getPointAt(int index)
 	return { -1,-1 };
 }
 
+
+bool Intersection::onSegment(Point p, Point q, Point r)
+{
+	if (q.x <= max(p.x, r.x) && q.x >= min(p.x, r.x) &&
+		q.y <= max(p.y, r.y) && q.y >= min(p.y, r.y))
+		return true;
+
+	return false;
+}
+
+
+int Intersection::orientation(Point p, Point q, Point r)
+{
+	int val = (q.y - p.y) * (r.x - q.x) -
+		(q.x - p.x) * (r.y - q.y);
+
+	if (val == 0) return 0;  // colinear 
+
+	return (val > 0) ? 1 : 2; // clock or counterclock wise 
+}
+
+bool Intersection::doIntersect(Point p1, Point q1, Point p2, Point q2)
+{
+	// Find the four orientations needed for general and 
+	// special cases 
+	int o1 = orientation(p1, q1, p2);
+	int o2 = orientation(p1, q1, q2);
+	int o3 = orientation(p2, q2, p1);
+	int o4 = orientation(p2, q2, q1);
+
+	// General case 
+	if (o1 != o2 && o3 != o4)
+		return true;
+
+	// Special Cases 
+	// p1, q1 and p2 are colinear and p2 lies on segment p1q1 
+	if (o1 == 0 && onSegment(p1, p2, q1)) return true;
+
+	// p1, q1 and q2 are colinear and q2 lies on segment p1q1 
+	if (o2 == 0 && onSegment(p1, q2, q1)) return true;
+
+	// p2, q2 and p1 are colinear and p1 lies on segment p2q2 
+	if (o3 == 0 && onSegment(p2, p1, q2)) return true;
+
+	// p2, q2 and q1 are colinear and q1 lies on segment p2q2 
+	if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+
+	return false; // Doesn't fall in any of the above cases 
+}
+
+double Helper::crossProductLength(Point a, Point b, Point c)
+{
+	float BAx = a.x - b.x;
+	float BAy = a.y - b.y;
+	float BCx = c.x - b.x;
+	float BCy = c.y - b.y;
+
+	// Calculate the Z coordinate of the cross product.
+	return (BAx * BCy - BAy * BCx);
+}
+
+std::tuple<int, double, double> Helper::findRootsOfEquation(double a, double b, double c, double eps) {
+	int numOfRoots;
+	double x1, x2;
+
+	if (abs(a) < eps) {
+		numOfRoots = 1;
+		x1 = -c / b;
+	}
+	else {
+		auto D = b * b - 4 * a * c;
+
+		if (D < 0) {
+			numOfRoots = 0;
+		}
+		else if (std::abs(D) < eps) {
+			numOfRoots = 1;
+			x1 = (-b) / (2 * a);
+		}
+		else {
+			numOfRoots = 2;
+			auto ds = sqrt(D);
+			x1 = (-b + ds) / (2 * a);
+			x2 = (-b - ds) / (2 * a);
+		}
+	}
+	return { numOfRoots, x1, x2 };
+}
+
+std::tuple<double, double, double> Helper::findLineCoefficients(double x1, double y1, double x2, double y2) {
+	return { y1 - y2, x2 - x1, x1 * y2 - x2 * y1 };
+}
+
+
+
+void Helper::addValidRootsToList(std::tuple<int, double, double> r1, std::vector<double>* roots) {
+	if (std::get<0>(r1) == 0)
+		return;
+	roots->push_back(std::get<1>(r1));
+
+	if (std::get<0>(r1) == 1)
+		return;
+	roots->push_back(std::get<2>(r1));
+}
+
+Point* Algorithms::Helper::findPointOnSegmentByDistance(Point* p1, Point* p2, double distance, double eps)
+{
+	auto x1 = p1->x, y1 = p1->y, x2 = p2->x, y2 = p2->y;
+	auto lineCoeff = findLineCoefficients(x1, y1, x2, y2);
+	auto a = std::get<0>(lineCoeff), b = std::get<1>(lineCoeff), c = std::get<2>(lineCoeff);
+
+	auto eqA = b * b + 1;
+	auto eqB = 2 * a * x1 * b + 2 * c * b - 2 * y1;
+	auto eqC = (a * x1 + c) * (a * x1 + c) + y1 * y1 - a * a * distance * distance;
+
+	auto roots =   findRootsOfEquation(eqA, eqB, eqC, 0.0001);
+
+	std::vector<double>* validRoots = new std::vector<double>();
+	Algorithms::Helper::addValidRootsToList(roots, validRoots);
+
+	for (int i = 0; i < validRoots->size(); ++i) {
+		double y0 = (*validRoots)[i];
+		///a = 0?
+		double x0 = (-c - b * y0) / a;
+
+		auto check = a * x0 + b * y0 + c;
+		
+		if (abs(check) > eps) {
+			continue;
+		}
+		else {
+			return  new Point{ x0, y0 };
+		}
+	}
+
+	return nullptr;
+}
+
+void Helper::startPermutation(std::vector<int>* a) {
+	std::sort(a->begin(), a->end());
+}
+
+void Helper::swap(std::vector<int>* a, int i, int j)
+{
+	int s = (*a)[i];
+	(*a)[i] = (*a)[j];
+	(*a)[j] = s;
+}
+
+bool Helper::tryNextPermutation(std::vector<int> *a)
+{
+	int n = a->size();
+	int j = n - 2;
+	while (j != -1 && (*a)[j] >= (*a)[j + 1]) j--;
+	if (j == -1)
+		return false; // больше перестановок нет
+	int k = n - 1;
+	while ((*a)[j] >= (*a)[k]) k--;
+	swap(a, j, k);
+	int l = j + 1, r = n - 1; // сортируем оставшуюся часть последовательности
+	while (l < r)
+		swap(a, l++, r--);
+	return true;
+}

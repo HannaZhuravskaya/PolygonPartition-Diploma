@@ -45,6 +45,7 @@ struct Vertex {
 struct Face { 
 	Edge* e;
 	double area;
+	double perimeter;
 	int numOfFace;
 	bool isDeleted = false;
 };
@@ -109,11 +110,7 @@ public:
 	double areaOfFace(Face* f);
 	double perimeterOfFace(Face* f);
 	double getDistance(Vertex* v1, Vertex* v2);
-	double crossProductLength(Point a, Point b, Point c);
 	double isPointInEdge(Vertex* v1, Vertex* v2, Point* p);
-	std::tuple<double, double, double> findLineCoefficients(double x1, double y1, double x2, double y2);
-	std::tuple<int, double, double> findRootsOfEquation(double a, double b, double c);
-	void addValidRootsToList(std::tuple<int, double, double> r1, std::vector<double>* roots);
 
 	double findYByXAndTwoVertixes(Vertex* v1, Vertex* v2, double xPos);
 	double findXByYAndTwoVertixes(Vertex* v1, Vertex* v2, double yPos);
@@ -149,6 +146,9 @@ void splitHorizontal(double coord);
 
 int isPointInPolygon(Point* P);
 int isPointInPolygonTest(Point* P);
+
+std::vector<int> findConcavePoints();
+void splitToConvexPolygons();
 
 #pragma endregion Algorithm: Division of a polygon of a part along an orthogonal grid with area restrictions
 

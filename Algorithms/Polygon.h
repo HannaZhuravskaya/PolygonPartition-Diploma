@@ -18,6 +18,8 @@
 #include <vector>
 #include <exception>
 #include <stdexcept>
+#include <map>
+#include <algorithm> 
 
 namespace Algorithms
 {
@@ -47,5 +49,46 @@ namespace Algorithms
 		Point getPointAt(int index);
 		double crossProductLength(Point a, Point b, Point c);
 		bool isLeftTraversal;
+	};
+
+	static class ALGORITHMS_API Intersection
+	{
+	private:
+		// Given three colinear points p, q, r, the function checks if 
+		// point q lies on line segment 'pr' 
+		static bool onSegment(Point p, Point q, Point r);
+
+		// To find orientation of ordered triplet (p, q, r). 
+		// The function returns following values 
+		// 0 --> p, q and r are colinear 
+		// 1 --> Clockwise 
+		// 2 --> Counterclockwise 
+		static int orientation(Point p, Point q, Point r);
+
+	public:
+		// The main function that returns true if line segment 'p1q1' 
+		// and 'p2q2' intersect. 
+		static bool doIntersect(Point p1, Point q1, Point p2, Point q2);
+	};
+
+	static class ALGORITHMS_API Helper
+	{
+	public:
+		static std::tuple<int, double, double> findRootsOfEquation(double a, double b, double c, double eps);
+
+		static double crossProductLength(Point a, Point b, Point c);
+
+		static std::tuple<double, double, double> findLineCoefficients(double x1, double y1, double x2, double y2);
+
+		static void addValidRootsToList(std::tuple<int, double, double> r1, std::vector<double>* roots);
+
+		// distance from p1 to new point
+		static Point* findPointOnSegmentByDistance(Point* p1, Point* p2, double distance, double eps);
+
+		static void startPermutation(std::vector<int>* a);
+
+		static void swap(std::vector<int>* a, int i, int j);
+
+		static bool tryNextPermutation(std::vector<int>* a);
 	};
 }

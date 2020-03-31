@@ -98,9 +98,11 @@ std::vector<Vertex*> Mesh::removeEdge(Edge* e) {
 	Face* face = e->f;
 	face->area = face->area + e->sym->f->area;
 	auto edgesLength = 2 * getDistance(e->v, e->next->v);
+	face->perimeter = face->perimeter + e->sym->f->perimeter - edgesLength;
 
 	e->sym->f->isDeleted = true;
 	e->sym->f->area = 0;
+	e->sym->f->perimeter = 0;
 
 	std::vector<Vertex*> vertexes;
 	vertexes.push_back(e->v);
@@ -263,9 +265,20 @@ Edge* Mesh::connectVertexes(Vertex* v1, Vertex* v2) {
 
 	// change face references for edges in newFace and calculate area of newFace.
 	double area = 0;
+	newFace->perimeter = 0.0;
 	auto cur = newFace->e;
 	do {
 		area += (cur->v->pos->x * cur->next->v->pos->y - cur->v->pos->y * cur->next->v->pos->x);
+
+		auto edgeLength = getDistance(cur->v, cur->next->v);
+		if (cur == newFace->e) {
+			newFace->perimeter += edgeLength;
+			newFace->e->sym->f->perimeter += edgeLength;
+		}
+		else {
+			newFace->perimeter += edgeLength;
+			newFace->e->sym->f->perimeter -= edgeLength;
+		}
 
 		if (cur->v == leftVertex) {
 			leftFace = newFace;
@@ -352,7 +365,7 @@ PolygonData Mesh::convertToPolygonData() {
 			points_v.push_back(realNumberOfVertex[cur->v->numOfVertex]);
 			cur = cur->next;
 		}
-		
+
 		points.resize(points_v.size());
 
 		for (int j = 0; j < points.size(); ++j) {
@@ -361,7 +374,7 @@ PolygonData Mesh::convertToPolygonData() {
 
 		data.tryAddFace(points.size(),points);
 	}
-	
+
 	return data;
 }
 
@@ -434,10 +447,13 @@ void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data) 
 	leftVertex = nullptr;
 
 	double area = 0.0;
+	double perimeter = 0.0;
 	int size = data.getNumOfVertexes();
 
 	for (int i = 0; i < data.getNumOfVertexes(); ++i) {
-		area += data.vertex_x[i] * data.vertex_y[(i + 1) % size] - data.vertex_y[i] * data.vertex_x[(i + 1)%size];
+		auto x1 = data.vertex_x[i], y1 = data.vertex_y[i], x2 = data.vertex_x[(i + 1) % size], y2 = data.vertex_y[(i + 1) % size];
+		area += x1 * y2 - y1 * x2;
+		perimeter += sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 
 		Vertex* v = new Vertex;
 		v->pos = new Point{ data.vertex_x[i], data.vertex_y[i] };
@@ -460,6 +476,7 @@ void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data) 
 
 	Face* f = new Face;
 	f->area = area;
+	f->perimeter = perimeter;
 	f->numOfFace = 0;
 
 	for (int j = 0; j < data.getNumOfVertexes(); ++j) {
@@ -514,23 +531,38 @@ std::string Mesh::convertToString() {
 	ss << "V: " << V.size() << ", E: " << E.size() << ", F: " << F.size() << "\n";
 
 	for (int i = 0; i < V.size(); ++i) {
-		ss << "numOfVertex: " << V[i]->numOfVertex << ", (" << V[i]->pos->x << ", " << V[i]->pos->y << "), e: " << V[i]->e->numOfEdge
+		if (!V[i]->isDeleted)
+			ss << "numOfVertex: " << V[i]->numOfVertex << ", (" << V[i]->pos->x << ", " << V[i]->pos->y << "), e: " << V[i]->e->numOfEdge
 			<< ", isDeleted: " << V[i]->isDeleted << ", " << "isTemp: " << V[i]->isTemp << "\n";
+		else {
+			ss << "numOfVertex: " << V[i]->numOfVertex << ", isDeleted: " << V[i]->isDeleted << "\n";
+		}
 	}
 
 	for (int i = 0; i < E.size(); ++i) {
-		ss << "numOfEdge: " << E[i]->numOfEdge << ", v: " << E[i]->v->numOfVertex << ", f: " << E[i]->f->numOfFace
-			<< ", prev: " << E[i]->numOfEdge << ", next: " << E[i]->next->numOfEdge;
+		if (!E[i]->isDeleted) {
+			ss << "numOfEdge: " << E[i]->numOfEdge << ", v: " << E[i]->v->numOfVertex << ", f: " << E[i]->f->numOfFace
+				<< ", prev: " << E[i]->numOfEdge << ", next: " << E[i]->next->numOfEdge;
 
-		if (E[i]->sym != nullptr) {
-			ss << ", sym: " << E[i]->sym->numOfEdge;
+			if (E[i]->sym != nullptr) {
+				ss << ", sym: " << E[i]->sym->numOfEdge;
+			}
+
+			ss << ", isDeleted: " << E[i]->isDeleted << ", " << "isTemp: " << E[i]->isTemp << "\n";
 		}
-
-		ss << ", isDeleted: " << E[i]->isDeleted << ", " << "isTemp: " << E[i]->isTemp << "\n";
+		else {
+			ss << "numOfEdge: " << E[i]->numOfEdge << ", isDeleted: " << E[i]->isDeleted << "\n";
+		}
 	}
 
 	for (int i = 0; i < F.size(); ++i) {
-		ss << "numOfFace: " << F[i]->numOfFace << ", e: " << F[i]->e->numOfEdge << ", isDeleted: " << F[i]->isDeleted << ", area: " << F[i]->area << "\n";
+		if (!F[i]->isDeleted) {
+			ss << "numOfFace: " << F[i]->numOfFace << ", e: " << F[i]->e->numOfEdge << ", isDeleted: " << F[i]->isDeleted
+				<< ", area: " << F[i]->area << ", perimeter: " << F[i]->perimeter << "\n";
+		}
+		else {
+			ss << "numOfFace: " << F[i]->numOfFace << ", isDeleted: " << F[i]->isDeleted << "\n";
+		}
 	}
 
 	ss << originalVertexes.size() << "\n";
@@ -580,11 +612,20 @@ Mesh* Mesh::convertFromString(std::string stringData) {
 			data = splitString(to, "[^0-9.]+");
 			int cnt = 1;
 
-			auto v = mesh->V[std::stoi(data.at(cnt++))];
-			v->pos = new Point{ std::stod(data.at(cnt++)), std::stod(data.at(cnt++)) };
-			v->e = mesh->E[std::stoi(data.at(cnt++))];
-			v->isDeleted = std::stoi(data.at(cnt++));
-			v->isTemp = std::stoi(data.at(cnt++));
+			if (data.size() == 7) {
+				auto v = mesh->V[std::stoi(data.at(cnt++))];
+				v->pos = new Point{ std::stod(data.at(cnt++)), std::stod(data.at(cnt++)) };
+				v->e = mesh->E[std::stoi(data.at(cnt++))];
+				v->isDeleted = std::stoi(data.at(cnt++));
+				v->isTemp = std::stoi(data.at(cnt++));
+			}
+			else {
+				auto v = mesh->V[std::stoi(data.at(cnt++))];
+				v->pos = nullptr;
+				v->e = nullptr;
+				v->isDeleted = mesh->V[std::stoi(data.at(cnt++))];
+				v->isTemp = false;
+			}
 		}
 
 		for (int i = 0; i < numOfE; ++i) {
@@ -592,18 +633,30 @@ Mesh* Mesh::convertFromString(std::string stringData) {
 			data = splitString(to, "[^0-9]+");
 			int cnt = 1;
 
-			auto e = mesh->E[std::stoi(data.at(cnt++))];
-			e->v = mesh->V[std::stoi(data.at(cnt++))];
-			e->f = mesh->F[std::stoi(data.at(cnt++))];
-			e->prev = mesh->E[std::stoi(data.at(cnt++))];
-			e->next = mesh->E[std::stoi(data.at(cnt++))];
+			if (data.size() >= 8) {
+				auto e = mesh->E[std::stoi(data.at(cnt++))];
+				e->v = mesh->V[std::stoi(data.at(cnt++))];
+				e->f = mesh->F[std::stoi(data.at(cnt++))];
+				e->prev = mesh->E[std::stoi(data.at(cnt++))];
+				e->next = mesh->E[std::stoi(data.at(cnt++))];
 
-			if (data.size() == 9) {
-				e->sym = mesh->E[std::stoi(data.at(cnt++))];
+				if (data.size() == 9) {
+					e->sym = mesh->E[std::stoi(data.at(cnt++))];
+				}
+
+				e->isDeleted = std::stoi(data.at(cnt++));
+				e->isTemp = std::stoi(data.at(cnt++));
 			}
-
-			e->isDeleted = std::stoi(data.at(cnt++));
-			e->isTemp = std::stoi(data.at(cnt++));
+			else {
+				auto e = mesh->E[std::stoi(data.at(cnt++))];
+				e->v = nullptr;
+				e->f = nullptr;
+				e->prev = nullptr;
+				e->next = nullptr;
+				e->sym = nullptr;
+				e->isDeleted = std::stoi(data.at(cnt++));
+				e->isTemp = false;
+			}
 		}
 
 		for (int i = 0; i < numOfF; ++i) {
@@ -611,10 +664,20 @@ Mesh* Mesh::convertFromString(std::string stringData) {
 			data = splitString(to, "[^0-9.]+");
 			int cnt = 1;
 
-			auto f = mesh->F[std::stoi(data.at(cnt++))];
-			f->e = mesh->E[std::stoi(data.at(cnt++))];
-			f->isDeleted = std::stoi(data.at(cnt++));
-			f->area = std::stod(data.at(cnt++));
+			if (data.size() == 6) {
+				auto f = mesh->F[std::stoi(data.at(cnt++))];
+				f->e = mesh->E[std::stoi(data.at(cnt++))];
+				f->isDeleted = std::stoi(data.at(cnt++));
+				f->area = std::stod(data.at(cnt++));
+				f->perimeter = std::stod(data.at(cnt++));
+			}
+			else {
+				auto f = mesh->F[std::stoi(data.at(cnt++))];
+				f->e = nullptr;
+				f->isDeleted = std::stoi(data.at(cnt++));
+				f->area = 0.0;
+				f->perimeter = 0.0;
+			}
 		}
 
 		std::getline(ss, to);
@@ -669,17 +732,6 @@ double Mesh::getDistance(Vertex* v1, Vertex* v2) {
 	return  sqrt((v1->pos->x - v2->pos->x) * (v1->pos->x - v2->pos->x) + (v1->pos->y - v2->pos->y) * (v1->pos->y - v2->pos->y));
 }
 
-double Mesh::crossProductLength(Point a, Point b, Point c)
-{
-	float BAx = a.x - b.x;
-	float BAy = a.y - b.y;
-	float BCx = c.x - b.x;
-	float BCy = c.y - b.y;
-
-	// Calculate the Z coordinate of the cross product.
-	return (BAx * BCy - BAy * BCx);
-}
-
 double Mesh::isPointInEdge(Vertex* v1, Vertex* v2, Point* p) {
 	if (abs(v1->pos->x - v2->pos->x) < EPS) {
 		return abs(p->x - v1->pos->x) < EPS
@@ -698,47 +750,7 @@ double Mesh::isPointInEdge(Vertex* v1, Vertex* v2, Point* p) {
 	return abs(p->y - (k * p->x + b)) < EPS;
 }
 
-std::tuple<double, double, double> Mesh::findLineCoefficients(double x1, double y1, double x2, double y2) {
-	return { y1 - y2, x2 - x1, x1 * y2 - x2 * y1 };
-}
 
-std::tuple<int, double, double> Mesh::findRootsOfEquation(double a, double b, double c) {
-	int numOfRoots;
-	double x1, x2;
-
-	if (abs(a) < EPS) {
-		numOfRoots = 1;
-		x1 = -c / b;
-	}
-	else {
-		auto D = b * b - 4 * a * c;
-
-		if (D < 0) {
-			numOfRoots = 0;
-		}
-		else if (std::abs(D) < EPS) {
-			numOfRoots = 1;
-			x1 = (-b) / (2 * a);
-		}
-		else {
-			numOfRoots = 2;
-			auto ds = sqrt(D);
-			x1 = (-b + ds) / (2 * a);
-			x2 = (-b - ds) / (2 * a);
-		}
-	}
-	return { numOfRoots, x1, x2 };
-}
-
-void Mesh::addValidRootsToList(std::tuple<int, double, double> r1, std::vector<double>* roots) {
-	if (std::get<0>(r1) == 0)
-		return;
-	roots->push_back(std::get<1>(r1));
-
-	if (std::get<0>(r1) == 1)
-		return;
-	roots->push_back(std::get<2>(r1));
-}
 
 double Mesh::findYByXAndTwoVertixes(Vertex* v1, Vertex* v2, double xPos) {
 	auto k = (v1->pos->y - v2->pos->y) / (v1->pos->x - v2->pos->x);
@@ -1266,7 +1278,7 @@ std::pair<Point*,Point*> Mesh::findPointsV(double x1, double y1, double x2, doub
 	//2-leftTop
 	//3-rightTop
 	//4-rightBottom
-	auto coeff1 = findLineCoefficients(x4, y4, x1, y1), coeff2 = findLineCoefficients(x2, y2, x3, y3);
+	auto coeff1 = Algorithms::Helper::findLineCoefficients(x4, y4, x1, y1), coeff2 = Algorithms::Helper::findLineCoefficients(x2, y2, x3, y3);
 	double a1 = std::get<0>(coeff1), b1 = std::get<1>(coeff1), c1 = std::get<2>(coeff1);
 	double a2 = std::get<0>(coeff2), b2 = std::get<1>(coeff2), c2 = std::get<2>(coeff2);
 	auto k1 = -b1;
@@ -1277,12 +1289,12 @@ std::pair<Point*,Point*> Mesh::findPointsV(double x1, double y1, double x2, doub
 	auto c_pos = c + 2 * S * k1 * k2;
 	auto c_neg = c - 2 * S * k1 * k2;
 
-	auto roots1 = findRootsOfEquation(a, b, c_neg);
-	auto roots2 = findRootsOfEquation(a, b, c_pos);
+	auto roots1 = Algorithms::Helper::findRootsOfEquation(a, b, c_neg, EPS);
+	auto roots2 = Algorithms::Helper::findRootsOfEquation(a, b, c_pos, EPS);
 
 	std::vector<double>* roots = new std::vector<double>();
-	addValidRootsToList(roots1, roots);
-	addValidRootsToList(roots2, roots);
+	Algorithms::Helper::addValidRootsToList(roots1, roots);
+	Algorithms::Helper::addValidRootsToList(roots2, roots);
 
 	for (int i = 0; i < roots->size(); ++i) {
 		double c3 = (*roots)[i];
@@ -1432,6 +1444,40 @@ int Mesh::isPointInPolygonTest(Point* P)
 		}
 	}
 	return wn;
+}
+
+std::vector<int> Mesh::findConcavePoints()
+{
+	std::vector<int> numOfConcaveVertexes;
+	int size = this->V.size();
+
+	for (int i = 0; i < size; ++i) {
+		auto prev = this->V[(i - 1 + size) % size]->pos;
+		auto cur = this->V[i]->pos;
+		auto next = this->V[(i + 1) % size]->pos;
+
+		if ((isEqual(prev->x, cur->x) && isEqual(cur->x, next->x))
+			|| (isEqual(prev->y, cur->y) && isEqual(cur->y, next->y)))
+			continue;
+
+		////////////////
+		auto nearPrev = Algorithms::Helper::findPointOnSegmentByDistance(prev, cur, 1, EPS);
+		auto nearNext = Algorithms::Helper::findPointOnSegmentByDistance(next, cur, 1, EPS);;
+		///////////////////
+
+		auto midOfSegment = new Point{ (nearPrev->x + nearNext->x) / 2,(nearPrev->y + nearNext->y) / 2 };
+
+		if (!isPointInPolygon(midOfSegment)) {
+			numOfConcaveVertexes.push_back(this->V[i]->numOfVertex);
+		}
+	}
+
+	return numOfConcaveVertexes;
+}
+
+void Mesh::splitToConvexPolygons()
+{
+	auto v = findConcavePoints();
 }
 
 

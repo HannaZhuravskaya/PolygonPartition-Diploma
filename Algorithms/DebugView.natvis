@@ -4,7 +4,7 @@
     <DisplayString>{{v{numOfVertex}, e{e->numOfEdge}, temp: {isTemp}, {isDeleted}, {*pos}}}</DisplayString>
   </Type>
   <Type Name="Face">
-    <DisplayString>{{f{numOfFace}, e{e->numOfEdge}, area: {area}, {isDeleted}}}</DisplayString>
+    <DisplayString>{{f{numOfFace}, e{e->numOfEdge}, area: {area}, perimeter: {perimeter}, {isDeleted}}}</DisplayString>
   </Type>
   <Type Name="Edge">
     <DisplayString>{{e{numOfEdge}, v{v->numOfVertex}, prev: e{prev->numOfEdge}, next: e{next->numOfEdge}, sym: e{sym->numOfEdge}, f{f->numOfFace}, temp: {isTemp}, {isDeleted}}}</DisplayString>
