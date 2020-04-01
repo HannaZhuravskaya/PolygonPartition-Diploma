@@ -391,8 +391,31 @@ void ApplicationGUI::btn_reset_angle_clicked(bool checked)
 
 void ApplicationGUI::calculatePolygonProperties()
 {
-	polygonArea = polygon->getSquare();
-	setActiveGroupBox("areaProperties", true);
+	bool isSelfIntersected = false;
+	int size = polygon->getNumOfPoints();
+
+	for (int i = 0; i < size; ++i) {
+		for (int j = (i + 2) % size; i != (j + 1) % size; j = (j + 1) % size) {
+			if (a::Intersection::doIntersect(
+				polygon->getPointAt(i), polygon->getPointAt((i + 1) % size),
+				polygon->getPointAt(j), polygon->getPointAt((j + 1) % size)))
+			{
+				isSelfIntersected = true;
+				break;
+			}
+		}
+
+		if (isSelfIntersected)
+			break;
+	}
+
+	if (isSelfIntersected) {
+		QMessageBox::critical(this, "", "Polygon can not be selfintersected");
+	}
+	else {
+		polygonArea = polygon->getSquare();
+		setActiveGroupBox("areaProperties", true);
+	}
 }
 
 void ApplicationGUI::sliderRangeChanged()
@@ -525,21 +548,31 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 
 	auto data = convertPolygonToPolygonData();
 
-	drawPolygonMesh(ui.drawingArea_test, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
-
 	Mesh m = Mesh();
 	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
 	polygonDrawingAreaMesh = m.convertToString();
 
-	for (int i = 5; i <= 100; i += 10) {
-		m.splitByVertical(i);
-		m.splitHorizontal(i);
+	auto points = m.findConcavePoints();
+	drawPolygonMesh(ui.drawingArea_test, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
+	for (int i = 0; i < points.size(); ++i) {
+		auto pixel = ui.drawingArea_test->LogicToPixelCoords(QPointF(m.V[points[i]]->pos->x, m.V[points[i]]->pos->y), false);
+		ui.drawingArea_test->drawEllipse(pixel, 3, false, Qt::red);
 	}
+	test1 = m.convertToString();
+
+	/*std::sort(points.begin(), points.end(), [](int i, int j) {return j < i; });
+	a::Helper::startPermutation(&points);
+	while (a::Helper::tryNextPermutation(&points)) {
+		auto b = 2;
+	}*/
+
+
+	/*m.splitByVertical(35);
+	m.removeEdge(m.E[6]);*/
 
 	test2 = m.convertToString();
-
-	auto SplittedByGridData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_2, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
+	//auto SplittedByGridData = m.convertToPolygonData();
+	//drawPolygonMesh(ui.drawingArea_test_2, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
 }
 
 void ApplicationGUI::btn_saveMeshAsText(bool checked) {

@@ -267,27 +267,56 @@ Point* Algorithms::Helper::findPointOnSegmentByDistance(Point* p1, Point* p2, do
 	auto lineCoeff = findLineCoefficients(x1, y1, x2, y2);
 	auto a = std::get<0>(lineCoeff), b = std::get<1>(lineCoeff), c = std::get<2>(lineCoeff);
 
-	auto eqA = b * b + 1;
-	auto eqB = 2 * a * x1 * b + 2 * c * b - 2 * y1;
-	auto eqC = (a * x1 + c) * (a * x1 + c) + y1 * y1 - a * a * distance * distance;
+	if (abs(a) > eps) {
+		auto eqA = b * b + a * a;
+		auto eqB = 2 * a * x1 * b + 2 * c * b - 2 * y1 * a * a;
+		auto eqC = (a * x1 + c) * (a * x1 + c) + y1 * y1 * a * a - a * a * distance * distance;
 
-	auto roots =   findRootsOfEquation(eqA, eqB, eqC, 0.0001);
+		auto roots = findRootsOfEquation(eqA, eqB, eqC, 0.0001);
 
-	std::vector<double>* validRoots = new std::vector<double>();
-	Algorithms::Helper::addValidRootsToList(roots, validRoots);
+		std::vector<double>* validRoots = new std::vector<double>();
+		Algorithms::Helper::addValidRootsToList(roots, validRoots);
 
-	for (int i = 0; i < validRoots->size(); ++i) {
-		double y0 = (*validRoots)[i];
-		///a = 0?
-		double x0 = (-c - b * y0) / a;
+		for (int i = 0; i < validRoots->size(); ++i) {
+			double y0 = (*validRoots)[i];
+			///a = 0?
+			double x0 = (-c - b * y0) / a;
 
-		auto check = a * x0 + b * y0 + c;
-		
-		if (abs(check) > eps) {
-			continue;
+			if ((x0 - x1 > eps&& x0 - x2 > eps)
+				|| (x1 - x0 > eps&& x2 - x0 > eps)
+				|| (y0 - y1 > eps&& y0 - y2 > eps)
+				|| (y1 - y0 > eps&& y2 - y0 > eps)) 
+			{
+				continue;
+			}
+			else {
+				return  new Point{ x0, y0 };
+			}
+			
 		}
-		else {
-			return  new Point{ x0, y0 };
+	}
+	else {
+		auto eqA = 1;
+		auto eqB = -2 * x1;
+		auto eqC = x1 * x1 - distance * distance + (y1 + (c / b)) * (y1 + (c / b));
+
+		auto roots = findRootsOfEquation(eqA, eqB, eqC, 0.0001);
+
+		std::vector<double>* validRoots = new std::vector<double>();
+		Algorithms::Helper::addValidRootsToList(roots, validRoots);
+
+		double y0 = -c / b;
+
+		for (int i = 0; i < validRoots->size(); ++i) {
+			double x0 = (*validRoots)[i];
+			
+			if ((x0 - x1 > eps&& x0 - x2 > eps) || (x1 - x0 > eps&& x2 - x0 > eps))
+			{
+				continue;
+			}
+			else {
+				return  new Point{ x0, y0 };
+			}
 		}
 	}
 

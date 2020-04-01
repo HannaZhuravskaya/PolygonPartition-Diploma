@@ -1460,11 +1460,8 @@ std::vector<int> Mesh::findConcavePoints()
 			|| (isEqual(prev->y, cur->y) && isEqual(cur->y, next->y)))
 			continue;
 
-		////////////////
-		auto nearPrev = Algorithms::Helper::findPointOnSegmentByDistance(prev, cur, 1, EPS);
-		auto nearNext = Algorithms::Helper::findPointOnSegmentByDistance(next, cur, 1, EPS);;
-		///////////////////
-
+		auto nearPrev = Algorithms::Helper::findPointOnSegmentByDistance(cur, prev, 0.1, EPS);
+		auto nearNext = Algorithms::Helper::findPointOnSegmentByDistance(cur, next, 0.1, EPS);
 		auto midOfSegment = new Point{ (nearPrev->x + nearNext->x) / 2,(nearPrev->y + nearNext->y) / 2 };
 
 		if (!isPointInPolygon(midOfSegment)) {
