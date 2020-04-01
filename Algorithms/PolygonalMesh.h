@@ -141,14 +141,19 @@ public:
 
 #pragma region Methods used in the algorithm
 
-void splitByVertical(double coord);
-void splitHorizontal(double coord);
+	void splitByVertical(double coord);
+	void splitHorizontal(double coord);
 
-int isPointInPolygon(Point* P);
-int isPointInPolygonTest(Point* P);
+	//returns Vertexes to add in face and existing Vertexes to join(not always)
+	void splitByVerticalInFace(Face* f, double coord);
+	void splitHorizontalInFace(Face* f, double coord);
+	void splitByListOfVertexes(std::map<Edge*, Point*> toAddAndJoin, std::vector<Vertex*> toJoin, std::vector<Vertex*> faceVertexes);
 
-std::vector<int> findConcavePoints();
-void splitToConvexPolygons();
+	int isPointInPolygon(Point* P, std::vector<Vertex*> faceVertexes);
+	int isPointInPolygonTest(Point* P);
+
+	std::vector<int> findConcavePoints();
+	void splitToConvexPolygons();
 
 #pragma endregion Algorithm: Division of a polygon of a part along an orthogonal grid with area restrictions
 

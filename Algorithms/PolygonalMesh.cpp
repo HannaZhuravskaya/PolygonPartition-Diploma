@@ -1380,15 +1380,15 @@ bool tryRotateVertexes(std::vector<Point*> vertexes) {
 //      Input:   P = a point,
 //               V[] = vertex points of a polygon V[n+1] with V[n]=V[0]
 //      Return:  wn = the winding number (=0 only when P is outside)
-int Mesh::isPointInPolygon(Point *P)
+int Mesh::isPointInPolygon(Point *P, std::vector<Vertex*> faceVertexes)
 {
 	int    wn = 0;    // the  winding number counter
 	// loop through all edges of the polygon
-	for (int i = 0; i < originalVertexes.size(); i++) {   // edge from V[i] to  V[i+1]
-		if (isLess(originalVertexes[i]->pos->y, P->y) || isEqual(originalVertexes[i]->pos->y, P->y)) {          // start y <= P.y
-			if (isGreater(originalVertexes[(i + 1) % originalVertexes.size()]->pos->y, P->y))      // an upward crossing
+	for (int i = 0; i < faceVertexes.size(); i++) {   // edge from V[i] to  V[i+1]
+		if (isLess(faceVertexes[i]->pos->y, P->y) || isEqual(faceVertexes[i]->pos->y, P->y)) {          // start y <= P.y
+			if (isGreater(faceVertexes[(i + 1) % faceVertexes.size()]->pos->y, P->y))      // an upward crossing
 			{
-				double pos = isLeft(originalVertexes[i]->pos, originalVertexes[(i + 1) % originalVertexes.size()]->pos, P);
+				double pos = isLeft(faceVertexes[i]->pos, faceVertexes[(i + 1) % faceVertexes.size()]->pos, P);
 				if (isEqual(pos, 0))
 					return 0;
 				if (isGreater(pos, 0))  // P left of  edge
@@ -1396,9 +1396,9 @@ int Mesh::isPointInPolygon(Point *P)
 			}
 		}
 		else {                        // start y > P.y (no test needed)
-			if (isLess(originalVertexes[(i + 1) % originalVertexes.size()]->pos->y, P->y) || isEqual(originalVertexes[(i + 1) % originalVertexes.size()]->pos->y, P->y))     // a downward crossing
+			if (isLess(faceVertexes[(i + 1) % faceVertexes.size()]->pos->y, P->y) || isEqual(faceVertexes[(i + 1) % faceVertexes.size()]->pos->y, P->y))     // a downward crossing
 			{
-				double pos = isLeft(originalVertexes[i]->pos, originalVertexes[(i + 1) % originalVertexes.size()]->pos, P);
+				double pos = isLeft(faceVertexes[i]->pos, faceVertexes[(i + 1) % faceVertexes.size()]->pos, P);
 				if (isEqual(pos, 0))
 					return 0;
 				if (isLess(pos, 0))  // P right of  edge
@@ -1464,7 +1464,7 @@ std::vector<int> Mesh::findConcavePoints()
 		auto nearNext = Algorithms::Helper::findPointOnSegmentByDistance(cur, next, 0.1, EPS);
 		auto midOfSegment = new Point{ (nearPrev->x + nearNext->x) / 2,(nearPrev->y + nearNext->y) / 2 };
 
-		if (!isPointInPolygon(midOfSegment)) {
+		if (!isPointInPolygon(midOfSegment, originalVertexes)) {
 			numOfConcaveVertexes.push_back(this->V[i]->numOfVertex);
 		}
 	}
@@ -1475,6 +1475,11 @@ std::vector<int> Mesh::findConcavePoints()
 void Mesh::splitToConvexPolygons()
 {
 	auto v = findConcavePoints();
+
+	if (v.size() == 0)
+		return;
+
+	///
 }
 
 
@@ -1540,7 +1545,111 @@ void Mesh::splitByVertical(double coord) {
 		auto cur = vertexesToJoin[i].first;
 		auto prev = vertexesToJoin[i - 1].first;
 
-		if (isPointInPolygon(new Point{ cur->pos->x,  cur->pos->y + ((prev->pos->y - cur->pos->y) / 2 )}) != 0) {
+		if (isPointInPolygon(new Point{ cur->pos->x,  cur->pos->y + ((prev->pos->y - cur->pos->y) / 2 )}, originalVertexes) != 0) {
+			edgesToAdd.push_back({ prev, cur });
+		}
+	}
+
+	for (int i = 0; i < edgesToAdd.size(); ++i) {
+		this->connectVertexes(edgesToAdd[i].first, edgesToAdd[i].second);
+	}
+}
+
+void Mesh::splitByVerticalInFace(Face* f, double coord) {
+	//if i split and get other vertex in list?
+
+	std::set<Vertex*> vertexesToJoinMap;
+	std::vector<Vertex*> vertexesToJoin;
+	std::map<Edge*, Point*> vertexesToAdd;
+	std::vector<Vertex*> faceVertexes;
+
+	auto cur = f->e;
+	do {
+		auto startV = cur->v;
+		auto endV = cur->next->v;
+		faceVertexes.push_back(cur->v);
+
+		if ((isLess(startV->pos->x, coord) && isGreater(endV->pos->x, coord)) || (isGreater(startV->pos->x, coord) && isLess(endV->pos->x, coord))) {
+
+			if (isEqual(startV->pos->y, endV->pos->y)) {
+
+				vertexesToAdd.insert({ cur, new Point{ coord, startV->pos->y } });
+			}
+			else {
+
+				vertexesToAdd.insert({ cur, new Point{ coord, this->findYByXAndTwoVertixes(startV, endV, coord) } });
+			}
+		}
+
+		if (isEqual(startV->pos->x, coord) && vertexesToJoinMap.find(startV) == vertexesToJoinMap.end())
+			vertexesToJoinMap.insert(startV);
+		if (isEqual(endV->pos->x, coord) && vertexesToJoinMap.find(endV) == vertexesToJoinMap.end())
+			vertexesToJoinMap.insert(endV);
+
+		cur = cur->next;
+
+	} while (f->e != cur);
+
+	copy(vertexesToJoinMap.begin(), vertexesToJoinMap.end(), back_inserter(vertexesToJoin));
+
+	splitByListOfVertexes(vertexesToAdd, vertexesToJoin, faceVertexes);
+}
+
+void Mesh::splitHorizontalInFace(Face* f, double coord) {
+	////if i split and get other vertex in list?
+
+	std::set<Vertex*> vertexesToJoinMap;
+	std::vector<Vertex*> vertexesToJoin;
+	std::map<Edge*, Point*> vertexesToAdd;
+	std::vector<Vertex*> faceVertexes;
+
+	auto cur = f->e;
+	do {
+		auto startV = cur->v;
+		auto endV = cur->next->v;
+		faceVertexes.push_back(cur->v);
+
+		if ((isLess(startV->pos->y, coord) && isGreater(endV->pos->y, coord)) || (isGreater(startV->pos->y, coord) && isLess(endV->pos->y, coord))) {
+			if (isEqual(startV->pos->x, endV->pos->x)) {
+				vertexesToAdd.insert({cur, new Point{ startV->pos->x, coord } });
+			}
+			else {
+				vertexesToAdd.insert({ cur, new Point{ this->findXByYAndTwoVertixes(startV, endV, coord), coord } });
+			}
+		}
+
+		if (isEqual(startV->pos->y, coord) && vertexesToJoinMap.find(startV) == vertexesToJoinMap.end()) 
+			vertexesToJoinMap.insert(startV);
+		if (isEqual(endV->pos->y, coord) && vertexesToJoinMap.find(endV) == vertexesToJoinMap.end()) 
+			vertexesToJoinMap.insert(endV);
+
+
+		cur = cur->next;
+
+	} while (f->e != cur);
+
+	copy(vertexesToJoinMap.begin(), vertexesToJoinMap.end(), back_inserter(vertexesToJoin));
+
+	splitByListOfVertexes(vertexesToAdd, vertexesToJoin, faceVertexes);
+}
+
+void Mesh::splitByListOfVertexes(std::map<Edge*, Point*> toAddAndJoin, std::vector<Vertex*> toJoin, std::vector<Vertex*> faceVertexes)
+{
+	std::vector<std::pair<Vertex*, Vertex*>> edgesToAdd;
+
+	for (auto toAdd: toAddAndJoin) {
+		toJoin.push_back(this->splitEdge(toAdd.first, toAdd.second));
+	}
+
+	sort(toJoin.begin(), toJoin.end(), [](const Vertex* p1, const Vertex* p2)
+		{ return isGreater(p1->pos->y, p2->pos->y) || isLess(p1->pos->x, p2->pos->x); });
+
+
+	for (int i = 1; i < toJoin.size(); ++i) {
+		auto cur = toJoin[i];
+		auto prev = toJoin[i - 1];
+
+		if (isPointInPolygon(new Point{ (prev->pos->x + cur->pos->x) / 2,  (prev->pos->y + cur->pos->y) / 2 }, faceVertexes) != 0) {
 			edgesToAdd.push_back({ prev, cur });
 		}
 	}
