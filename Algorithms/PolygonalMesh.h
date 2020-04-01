@@ -87,7 +87,7 @@ public:
 	Edge* connectVertexes(Vertex* v1, Vertex* v2);
 	void setEdge(Edge* edgeToSet, Vertex* v, Face* f, Edge* prev, Edge* next, Edge* sym);
 	void iteratingOverTheEdgesOfFace(Face* f);
-
+	static Mesh * copy(Mesh * m);
 #pragma endregion
 
 #pragma region Mesh-PolygonData Convertation 
@@ -145,15 +145,17 @@ public:
 	void splitHorizontal(double coord);
 
 	//returns Vertexes to add in face and existing Vertexes to join(not always)
-	void splitByVerticalInFace(Face* f, double coord);
-	void splitHorizontalInFace(Face* f, double coord);
-	void splitByListOfVertexes(std::map<Edge*, Point*> toAddAndJoin, std::vector<Vertex*> toJoin, std::vector<Vertex*> faceVertexes);
+	std::vector<Vertex*>  splitByVerticalInFace(Face* f, double coord);
+	std::vector<Vertex*>  splitHorizontalInFace(Face* f, double coord);
+	std::vector<Vertex*>  splitByListOfVertexes(std::map<Edge*, Point*> toAddAndJoin, std::vector<Vertex*> toJoin, std::vector<Vertex*> faceVertexes);
 
 	int isPointInPolygon(Point* P, std::vector<Vertex*> faceVertexes);
 	int isPointInPolygonTest(Point* P);
 
 	std::vector<int> findConcavePoints();
-	void splitToConvexPolygons();
+	std::vector<Mesh*>* splitToConvexPolygons();
+	static Mesh* getOptimalMesh(std::vector<Mesh*>* meshes);
+//	void splitToConvexPolygonsByPermutation();
 
 #pragma endregion Algorithm: Division of a polygon of a part along an orthogonal grid with area restrictions
 
