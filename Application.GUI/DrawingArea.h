@@ -47,6 +47,7 @@ public:
 	void drawEllipse(QPoint point, int windowRadius, bool isWidjetCoords, QColor fillColor = Qt::black, QColor borderColor = Qt::black, double borderWidth = 1);
 	void drawLine(QPoint firstPoint, QPoint secondPoint, bool isWidjetCoords, QColor fillColor = Qt::black, double borderWidth = 1);
 	void drawArc(double ang, QPoint left, QPoint center, QPoint top, int offsetInPixels, bool isWidjetCoords, QColor fillColor = Qt::black, QColor borderColor = Qt::black, double borderWidth = 1);
+	void drawText(QString text, QPoint leftTop, QPoint rightBottom, bool isWidjetCoords, QColor fillColor = Qt::black, QFont font = QFont("Arial"), int flags = Qt::AlignLeft);
 
 	void setMouseTracking(bool isMouseTracking, QLabel* mouseCoordinates);
 	void setMouseTracking(bool isMouseTracking);

@@ -86,6 +86,22 @@ void DrawingArea::drawArc(double ang, QPoint left, QPoint center, QPoint top, in
 	setDefaultPen();
 }
 
+void DrawingArea::drawText(QString text, QPoint leftTop, QPoint rightBottom, bool isWidjetCoords, QColor fillColor, QFont font, int flags){
+	painter->setPen(QPen(fillColor, 1));
+	painter->setBrush(fillColor);
+	painter->setFont(font);
+
+	if (!isWidjetCoords) {
+		leftTop = AppToWidjetCoords(leftTop);
+		rightBottom = AppToWidjetCoords(rightBottom);
+	}
+
+	painter->drawText(leftTop.x(), leftTop.y(), abs( rightBottom.x() - leftTop.x()), abs(leftTop.y() - rightBottom.y()), flags, text);
+	this->setPixmap(*pixmap);
+
+	setDefaultPen();
+}
+
 int DrawingArea::x() {
 	return this->xPos;
 }
