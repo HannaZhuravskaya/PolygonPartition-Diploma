@@ -20,7 +20,8 @@ ApplicationGUI::ApplicationGUI(QWidget* parent)
 void ApplicationGUI::initializeControls()
 {
 	////////////////////////////////
-
+	currentMesh = -1;
+	meshes = std::vector<Mesh*>();
 	//3,3
 	ui.drawingArea_test->setScale(3, 3);
 	ui.drawingArea_test->setGridVisibility(true);
@@ -541,6 +542,34 @@ PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
 	return data;
 }
 
+bool ApplicationGUI::tryDrawNextMesh() {
+	if (currentMesh + 1 == meshes.size() || currentMesh + 1 < 0)
+		return false;
+
+	currentMesh++;
+	test2 = meshes[currentMesh]->convertToString();
+	auto data = meshes[currentMesh]->convertToPolygonData();
+	drawPolygonMesh(ui.drawingArea_test_2, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+
+	auto leftTop = ui.drawingArea_test_2->LogicToPixelCoords({ 0, 10 }, true);
+	auto rightBottom = ui.drawingArea_test_2->LogicToPixelCoords({ 10, 0 }, true);
+	ui.drawingArea_test_2->drawText(QString::number(currentMesh), leftTop, rightBottom, true, Qt::black, QFont("Arial"), Qt::AlignCenter & Qt::AlignHCenter);
+}
+
+bool ApplicationGUI::tryDrawPrevMesh() {
+	if (currentMesh - 1 < 0 || currentMesh - 1 >= meshes.size())
+		return false;
+
+	currentMesh--;
+	test2 = meshes[currentMesh]->convertToString();
+	auto data = meshes[currentMesh]->convertToPolygonData();
+	drawPolygonMesh(ui.drawingArea_test_2, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+
+	auto leftTop = ui.drawingArea_test_2->LogicToPixelCoords({ 0, 10 }, true);
+	auto rightBottom = ui.drawingArea_test_2->LogicToPixelCoords({ 10, 0 }, true);
+	ui.drawingArea_test_2->drawText(QString::number(currentMesh), leftTop, rightBottom, true, Qt::black, QFont("Arial"), Qt::AlignCenter & Qt::AlignHCenter);
+}
+
 void ApplicationGUI::btn_doAlgo(bool checked)
 {
 	if (anglePoints.first == nullptr || anglePoints.second == nullptr)
@@ -560,19 +589,24 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	}
 	test1 = m.convertToString();
 
-	/*std::sort(points.begin(), points.end(), [](int i, int j) {return j < i; });
-	a::Helper::startPermutation(&points);
-	while (a::Helper::tryNextPermutation(&points)) {
-		auto b = 2;
-	}*/
 
+	meshes.clear();
+	auto meshesRef = *m.splitToConvexPolygons();
+	for (auto i : meshesRef) {
+		meshes.push_back(Mesh::convertFromString(i->convertToString()));
+	}
+
+	currentMesh = -1;
+	tryDrawNextMesh();
 
 	/*m.splitByVertical(35);
 	m.removeEdge(m.E[6]);*/
 
-	test2 = m.convertToString();
-	//auto SplittedByGridData = m.convertToPolygonData();
-	//drawPolygonMesh(ui.drawingArea_test_2, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
+	auto optimal = Mesh::getOptimalMesh(&meshesRef);
+
+	test3 = optimal->convertToString();
+	auto data2 = optimal->convertToPolygonData();
+	drawPolygonMesh(ui.drawingArea_test_3, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
 }
 
 void ApplicationGUI::btn_saveMeshAsText(bool checked) {
@@ -748,5 +782,15 @@ void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawin
 		ui.drawingArea_test_2->deleteAllEffects();
 		ui.drawingArea_test_3->deleteAllEffects();
 		ui.drawingArea_test_4->deleteAllEffects();
+	}
+}
+
+void ApplicationGUI::keyPressEvent(QKeyEvent* event)
+{
+	if (event->key() == Qt::Key_A) {
+		tryDrawPrevMesh();
+	}
+	if (event->key() == Qt::Key_D) {
+		tryDrawNextMesh();
 	}
 }

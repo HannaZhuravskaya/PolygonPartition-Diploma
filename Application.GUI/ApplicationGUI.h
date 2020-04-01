@@ -31,6 +31,7 @@ public:
 
 protected:
 	void mousePressEvent(QMouseEvent* event) override;
+	void keyPressEvent(QKeyEvent* event) override;
 	void btn_apply_clicked(bool checked);
 	void btn_reset_clicked(bool checked);
 	void btn_apply_angle_clicked(bool checked);
@@ -88,6 +89,11 @@ private:
 	bool isModeToSelectDrawingArea;
 	std::vector<bool> controlsStatesBeforeSelectingMode;
 	bool isHintForSelectDrawingAreaShowned;
+
+	std::vector<Mesh*> meshes;
+	int currentMesh;
+	bool tryDrawNextMesh();
+	bool tryDrawPrevMesh();
 
 	void setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea);
 
