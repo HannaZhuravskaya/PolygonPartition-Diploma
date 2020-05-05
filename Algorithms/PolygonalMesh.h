@@ -155,7 +155,9 @@ public:
 	std::vector<int> findConcavePoints();
 	std::vector<Mesh*>* splitToConvexPolygons();
 	static Mesh* getOptimalMesh(std::vector<Mesh*>* meshes);
+	/*static std::vector<Mesh*> getOptimalMesh(std::vector<Mesh*>* meshes);*/
 //	void splitToConvexPolygonsByPermutation();
+	static Mesh* createFromFace(Face* face);
 
 #pragma endregion Algorithm: Division of a polygon of a part along an orthogonal grid with area restrictions
 

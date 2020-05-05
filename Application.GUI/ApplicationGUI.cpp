@@ -320,9 +320,11 @@ void ApplicationGUI::convertToSplittedMesh()
 	drawPolygonMesh(ui.polygonDrawingArea, 5, result.vertex_x, result.vertex_y, result.edges, result.faces);
 }
 
-void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces)
+void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean)
 {
-	drawingArea->clearDrawArea();
+	if (isNeedToClean) {
+		drawingArea->clearDrawArea();
+	}
 
 	for (int i = 0; i < x.size(); ++i) {
 		auto pixel = drawingArea->LogicToPixelCoords(QPointF(x[i], y[i]), false);
@@ -411,7 +413,7 @@ void ApplicationGUI::calculatePolygonProperties()
 	}
 
 	if (isSelfIntersected) {
-		QMessageBox::critical(this, "", "Polygon can not be selfintersected");
+		QMessageBox::critical(this, "", "Polygon can not be self-intersecting");
 	}
 	else {
 		polygonArea = polygon->getSquare();
@@ -490,17 +492,17 @@ void ApplicationGUI::btn_drawPoly(bool checked)
 	polygon = new a::Polygon(10);
 
 	QPoint p;
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 55.0 }, false);
-	addPointToPolygon(p.x(), p.y());
 	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 50.0 }, false);
 	addPointToPolygon(p.x(), p.y());
 	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 45.0 }, false);
 	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 35.0 }, false);
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 40.0 }, false);
 	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 35.0 }, false);
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 30.0 }, false);
 	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 25.0 }, false);
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 30.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 20.0 }, false);
 	addPointToPolygon(p.x(), p.y());
 	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 15.0 }, false);
 	addPointToPolygon(p.x(), p.y());
@@ -508,7 +510,7 @@ void ApplicationGUI::btn_drawPoly(bool checked)
 	addPointToPolygon(p.x(), p.y());
 	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 15.0 }, false);
 	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 60.0 }, false);
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 55.0 }, false);
 	addPointToPolygon(p.x(), p.y());
 }
 
@@ -581,7 +583,16 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
 	polygonDrawingAreaMesh = m.convertToString();
 
+	auto start = std::chrono::steady_clock::now();
+
 	auto points = m.findConcavePoints();
+	auto meshesRef = *m.splitToConvexPolygons();
+	auto optimal = Mesh::getOptimalMesh(&meshesRef);
+
+	auto end = std::chrono::steady_clock::now();
+
+
+	auto start1 = std::chrono::steady_clock::now();
 	drawPolygonMesh(ui.drawingArea_test, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
 	for (int i = 0; i < points.size(); ++i) {
 		auto pixel = ui.drawingArea_test->LogicToPixelCoords(QPointF(m.V[points[i]]->pos->x, m.V[points[i]]->pos->y), false);
@@ -589,25 +600,51 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	}
 	test1 = m.convertToString();
 
-
+	//////////////
 	meshes.clear();
-	auto meshesRef = *m.splitToConvexPolygons();
 	for (auto i : meshesRef) {
-		meshes.push_back(Mesh::convertFromString(i->convertToString()));
+		meshes.push_back(i);
 	}
 
 	currentMesh = -1;
 	tryDrawNextMesh();
-
-	/*m.splitByVertical(35);
-	m.removeEdge(m.E[6]);*/
-
-	auto optimal = Mesh::getOptimalMesh(&meshesRef);
+	/////////////
 
 	test3 = optimal->convertToString();
+
 	auto data2 = optimal->convertToPolygonData();
 	drawPolygonMesh(ui.drawingArea_test_3, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
+
+	/*ui.drawingArea_test_2->clear();
+	for (auto mesh : optimal) {
+		auto data2 = mesh->convertToPolygonData();
+		drawPolygonMesh(ui.drawingArea_test_3, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces, false);
+	}*/
+
+	auto end1 = std::chrono::steady_clock::now();
+
+	QMessageBox::information(this, "", 
+		"Algo time: " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()) + " ms.\n"
+		+ "Draw time: " +  QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end1 - start1).count()) + " ms.");
 }
+
+//void ApplicationGUI::test() {
+//	auto meshes = std::vector<Mesh*>();
+//
+//	for (auto face : optimal->F) {
+//		auto mesh = Mesh::createFromFace(face);
+//		auto area = mesh->F[0]->area;
+//		mesh->splitByVerticalGrid();
+//
+//		auto splitedEdges = mesh->splitFaces( area / 5);
+//
+//		auto perims = mesh->getInternalHorizontalPerimeters();
+//		auto optimal = mesh->getOptimalCombinationForInternalPerimeter(perims);
+//		mesh->splitMeshByMask(optimal.second);
+//
+//		meshes.push_back(mesh);
+//	}
+//}
 
 void ApplicationGUI::btn_saveMeshAsText(bool checked) {
 	if (!isHintForSelectDrawingAreaShowned) {

@@ -17,6 +17,7 @@
 #include <qspinbox.h>
 #include <fstream>
 #include <streambuf>
+#include <chrono>
 
 namespace a = Algorithms;
 
@@ -74,7 +75,7 @@ private:
 	void convertToSplittedMesh();
 	///
 
-	void drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces);
+	void drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean = true);
 
 	void setSliderLabelsPosition();
 

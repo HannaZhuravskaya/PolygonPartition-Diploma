@@ -325,9 +325,63 @@ void Mesh::iteratingOverTheEdgesOfFace(Face* f)
 	//• For CW order : e = e->prev
 }
 
-Mesh *Mesh::copy(Mesh* m) {
-	auto data = m->convertToString();
-	return Mesh::convertFromString(data);
+Mesh* Mesh::copy(Mesh* m) {
+
+	Mesh* copy = new Mesh();
+
+	for (int i = 0; i < m->V.size(); ++i) {
+		copy->V.push_back(new Vertex());
+		copy->V[i]->numOfVertex = i;
+	}
+
+	for (int i = 0; i < m->E.size(); ++i) {
+		copy->E.push_back(new Edge());
+		copy->E[i]->numOfEdge = i;
+	}
+
+	for (int i = 0; i < m->F.size(); ++i) {
+		copy->F.push_back(new Face());
+		copy->F[i]->numOfFace = i;
+	}
+
+	for (int i = 0; i < m->V.size(); ++i) {
+		auto v = m->V[i];
+		auto vCopy = copy->V[i];
+		vCopy->pos = new Point{ v->pos->x, v->pos->y };
+		vCopy->e = copy->E[v->e->numOfEdge];
+		vCopy->isDeleted = v->isDeleted;
+		vCopy->isTemp = v->isTemp;
+	}
+
+	for (int i = 0; i < m->E.size(); ++i) {
+		auto e = m->E[i];
+		auto eCopy = copy->E[i];
+		eCopy->v = copy->V[e->v->numOfVertex];
+		eCopy->f = copy->F[e->f->numOfFace];
+		eCopy->prev = copy->E[e->prev->numOfEdge];
+		eCopy->next = copy->E[e->next->numOfEdge];
+
+		if(e->sym != nullptr)
+			eCopy->sym = copy->E[e->sym->numOfEdge];
+
+		eCopy->isDeleted = e->isDeleted;
+		eCopy->isTemp = e->isTemp;
+	}
+
+	for (int i = 0; i < m->F.size(); ++i) {
+		auto f = m->F[i];
+		auto fCopy = copy->F[i];
+		fCopy->e = copy->E[f->e->numOfEdge];
+		fCopy->isDeleted = f->isDeleted;
+		fCopy->area = f->area;
+		fCopy->perimeter = f->perimeter;
+	}
+
+	for (int i = 0; i < m->originalVertexes.size(); ++i) {
+		copy->originalVertexes.push_back(copy->V[m->originalVertexes[i]->numOfVertex]);
+	}
+
+	return copy;
 }
 
 #pragma endregion
@@ -1521,17 +1575,86 @@ void splitToConvexPolygonsByPermutation(std::vector<int> permutation, int n, std
 	//send with new n
 }
 
+Mesh* Mesh::createFromFace(Face* face) {
+	vectorD* x = new vectorD();
+	vectorD* y = new vectorD();
+	vectorI* edges = new vectorI();
+
+	auto cur = face->e;
+	int cnt = 0;
+
+	do {
+		(*x).push_back(cur->v->pos->x);
+		(*y).push_back(cur->v->pos->y);
+		(*edges).push_back(cnt++);
+
+		cur = cur->next;
+	} while (cur != face->e);
+
+
+	PolygonData data = PolygonData();
+	data.vertex_x = *x;
+	data.vertex_y = *y;
+	data.tryAddFace(edges->size(), *edges);
+
+	Mesh* mesh = new Mesh();
+	mesh->convertFromPolygonDataOfConvexLeftTraversalPolygon(data);
+	return mesh;
+}
+
+//std::vector<Mesh*> Mesh::getOptimalMesh(std::vector<Mesh*>* meshes) {
+//	//std::pair<std::vector<std::pair<Mesh*, double>> *, Mesh*> Mesh::getOptimalMesh(std::vector<Mesh*>* meshes) {
+//
+//
+//	double min = DBL_MAX;
+//	std::vector<Mesh*> optimal;
+//	//std::vector<std::pair<Mesh*, double> * meshesWithFunc = new std::vector<std::pair<Mesh*, double>>();
+//
+//	for (auto mesh : *meshes) {
+//		double func = 0.0;
+//		std::vector<Mesh*>* meshByFaces = new std::vector<Mesh*>();
+//
+//		for (auto face : mesh->F) {
+//			auto cur = Mesh::createFromFace(face);
+//			cur->splitByVerticalGrid();
+//			auto splitedEdges = cur->splitFaces(cur->F[0]->area / 5.0);
+//			auto perims = cur->getInternalHorizontalPerimeters();
+//			auto optimal = cur->getOptimalCombinationForInternalPerimeter(perims);
+//			cur->splitMeshByMask(optimal.second);
+//
+//			meshByFaces->push_back(cur);
+//
+//			for (auto newFace : cur->F) {
+//				func += newFace->perimeter * newFace->perimeter / newFace->area;
+//			}
+//		}
+//
+//		//
+//		///is it nessesary
+//		/*for (auto face: mesh->F) {
+//			func += face->perimeter * face->perimeter / face->area;
+//		}*/
+//
+//		if (min > func){
+//			min = func;
+//			optimal = *meshByFaces;
+//		}
+//	}
+//
+//	return optimal;
+//}
+
 Mesh* Mesh::getOptimalMesh(std::vector<Mesh*>* meshes) {
 	double min = DBL_MAX;
 	Mesh* optimal = nullptr;
 
 	for (auto mesh : *meshes) {
 		double func = 0.0;
-		for (auto face: mesh->F) {
+		for (auto face : mesh->F) {
 			func += face->perimeter * face->perimeter / face->area;
 		}
 
-		if (min > func){
+		if (min > func) {
 			min = func;
 			optimal = mesh;
 		}
@@ -1553,8 +1676,15 @@ std::vector<Mesh*>* Mesh::splitToConvexPolygons()
 	std::vector<Mesh*>* allMeshes = new std::vector<Mesh*>();
 
 	do {
-		splitToConvexPolygonsByPermutation(v, 0, usedVertexes, true, Mesh::copy(this), allMeshes);
-		splitToConvexPolygonsByPermutation(v, 0, usedVertexes, false, Mesh::copy(this), allMeshes);
+//#pragma omp parallel
+//		{
+//#pragma omp task
+			splitToConvexPolygonsByPermutation(v, 0, usedVertexes, true, Mesh::copy(this), allMeshes);
+
+//#pragma omp task
+			//splitToConvexPolygonsByPermutation(v, 0, usedVertexes, false, Mesh::copy(this), allMeshes);
+		//} 
+		////blocks at end of parallel block to wait for tasks to finish
 	} while (Algorithms::Helper::tryNextPermutation(&v));
 
 	return allMeshes;
