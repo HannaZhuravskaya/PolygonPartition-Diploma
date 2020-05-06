@@ -504,6 +504,7 @@ void Mesh::convertFromPolygonData(PolygonData data) {
 
 void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data) {
 	leftVertex = nullptr;
+	rightVertex = nullptr;
 
 	double area = 0.0;
 	double perimeter = 0.0;
@@ -525,6 +526,14 @@ void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data) 
 
 		if (data.vertex_x[i] < data.vertex_x[leftVertex->numOfVertex]) {
 			leftVertex = V[i];;
+		}
+
+		if (rightVertex == nullptr) {
+			rightVertex = v;
+		}
+
+		if (data.vertex_x[i] > data.vertex_x[rightVertex->numOfVertex]) {
+			rightVertex = V[i];;
 		}
 
 		this->originalVertexes.push_back(this->V[i]);
@@ -1046,6 +1055,11 @@ void Mesh::splitByVerticalGrid() {
 			newEdge = connectVertexes(newV, prevEdge->v);
 			newEdge->isTemp = true;
 			//verticalMesh[prevEdge->v->pos->x] = newEdge;
+		}
+		//if vertexes on the same x and x not the rightest point - connect vertexes
+		else if(abs(prevEdge->v->pos->x - rightVertex->pos->x) > EPS){
+			newEdge = connectVertexes(prevEdge->v, nextEdge->next->v);
+			newEdge->isTemp = true;
 		}
 		else {
 			nextEdge = nextEdge->next;
@@ -1668,7 +1682,7 @@ std::vector<Mesh*>* Mesh::splitToConvexPolygons()
 	auto v = findConcavePoints();
 
 	if (v.size() == 0)
-		return new std::vector<Mesh*>();
+		return new std::vector<Mesh*>(1, this);
 
 	Algorithms::Helper::startPermutation(&v);
 

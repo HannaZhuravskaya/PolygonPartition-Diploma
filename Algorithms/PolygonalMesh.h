@@ -74,6 +74,7 @@ public:
 	double meshInnerPerimeter;
 
 	Vertex* leftVertex;
+	Vertex* rightVertex;
 	Face* leftFace;
 
 #pragma endregion Algorithm: Division of a convex polygon into parts equal in area by the orgonal grid
