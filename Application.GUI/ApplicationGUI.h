@@ -32,7 +32,6 @@ public:
 
 protected:
 	void mousePressEvent(QMouseEvent* event) override;
-	void keyPressEvent(QKeyEvent* event) override;
 	void btn_apply_clicked(bool checked);
 	void btn_reset_clicked(bool checked);
 	void btn_apply_angle_clicked(bool checked);
@@ -97,6 +96,10 @@ private:
 	bool tryDrawPrevMesh();
 
 	void setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea);
+
+	//////////
+	Mesh* optimal;
+	void test();
 
 Q_SIGNALS:
 	void drawingAreaSelected(DrawingArea* selectedDrawingArea);

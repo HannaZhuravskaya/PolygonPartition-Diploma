@@ -19,25 +19,27 @@ ApplicationGUI::ApplicationGUI(QWidget* parent)
 
 void ApplicationGUI::initializeControls()
 {
+#pragma region Main Stages
+
 	////////////////////////////////
 	currentMesh = -1;
 	meshes = std::vector<Mesh*>();
 	//3,3
-	ui.drawingArea_test->setScale(3, 3);
-	ui.drawingArea_test->setGridVisibility(true);
-	ui.drawingArea_test->clearDrawArea();
+	ui.drar_mainStages_rotated->setScale(3, 3);
+	ui.drar_mainStages_rotated->setGridVisibility(true);
+	ui.drar_mainStages_rotated->clearDrawArea();
 
-	ui.drawingArea_test_2->setScale(3, 3);
-	ui.drawingArea_test_2->setGridVisibility(true);
-	ui.drawingArea_test_2->clearDrawArea();
+	ui.drar_mainStages_concavePoints->setScale(3, 3);
+	ui.drar_mainStages_concavePoints->setGridVisibility(true);
+	ui.drar_mainStages_concavePoints->clearDrawArea();
 
-	ui.drawingArea_test_3->setScale(3, 3);
-	ui.drawingArea_test_3->setGridVisibility(true);
-	ui.drawingArea_test_3->clearDrawArea();
+	ui.drar_mainStages_convexParts->setScale(3, 3);
+	ui.drar_mainStages_convexParts->setGridVisibility(true);
+	ui.drar_mainStages_convexParts->clearDrawArea();
 
-	ui.drawingArea_test_4->setScale(3, 3);
-	ui.drawingArea_test_4->setGridVisibility(true);
-	ui.drawingArea_test_4->clearDrawArea();
+	ui.drar_mainStages_optimal->setScale(3, 3);
+	ui.drar_mainStages_optimal->setGridVisibility(true);
+	ui.drar_mainStages_optimal->clearDrawArea();
 
 	connect(ui.btn_saveMeshAsText, &QPushButton::clicked, this, &ApplicationGUI::btn_saveMeshAsText);
 	connect(ui.btn_uploadMeshFromText, &QPushButton::clicked, this, &ApplicationGUI::btn_uploadMeshFromText);
@@ -71,10 +73,7 @@ void ApplicationGUI::initializeControls()
 			setSliderLabelsPosition();
 		});
 
-	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this,
-		[=]() {
-			btn_doAlgo(true);
-		});
+	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this, [=]() { btn_doAlgo(true); });
 #pragma endregion
 
 #pragma region Mesh properties
@@ -83,6 +82,84 @@ void ApplicationGUI::initializeControls()
 	connect(ui.btn_reset_angle, &QPushButton::clicked, this, &ApplicationGUI::btn_reset_angle_clicked);
 	ui.meshAngleDrawingArea->setX();
 	ui.meshAngleDrawingArea->setY();
+#pragma endregion
+
+	connect(ui.btn_allConcavePartitions, &QPushButton::clicked, this,
+		[=](bool checked) {
+			ui.convexPartitions->setVisible(true);
+			ui.mainAlgoImages->setVisible(false);
+			ui.lbl_numOfConvexPartitions->setText("Part " + QString::number(currentMesh + 1) + " / " + QString::number(meshes.size()));
+		});
+
+	connect(ui.btn_convexPartitionStages, &QPushButton::clicked, this,
+		[=](bool checked) {
+			ui.convexPartsPartition->setVisible(true);
+			ui.mainAlgoImages->setVisible(false);
+		});
+
+	ui.btn_allConcavePartitions->setVisible(false);
+	ui.btn_convexPartitionStages->setVisible(false);
+
+#pragma endregion
+
+#pragma region Convex Partitions
+
+	ui.convexPartitions->setVisible(false);
+
+	ui.drar_partitionToConvex_optimal->setScale(3, 3);
+	ui.drar_partitionToConvex_optimal->setGridVisibility(true);
+	ui.drar_partitionToConvex_optimal->clearDrawArea();
+
+	ui.drar_partitionToConvex_current->setScale(3, 3);
+	ui.drar_partitionToConvex_current->setGridVisibility(true);
+	ui.drar_partitionToConvex_current->clearDrawArea();
+
+	connect(ui.btn_backToMainAlgoStages_fromConvexPartitions, &QPushButton::clicked, this,
+		[=](bool checked) {
+			ui.convexPartitions->setVisible(false);
+			ui.mainAlgoImages->setVisible(true);
+		});
+
+	connect(ui.btn_goToNextPartition, &QPushButton::clicked, this,
+		[=](bool checked) {
+			tryDrawNextMesh(); 
+			ui.lbl_numOfConvexPartitions->setText("Part " + QString::number(currentMesh + 1) + " / " + QString::number(meshes.size()));
+		});
+
+	connect(ui.btn_goToPrevPartition, &QPushButton::clicked, this, 
+		[=](bool checked) {
+			tryDrawPrevMesh();
+			ui.lbl_numOfConvexPartitions->setText("Part " + QString::number(currentMesh + 1) + " / " + QString::number(meshes.size()));
+		});
+
+#pragma endregion
+
+#pragma region Convex Parts Partitions
+
+	ui.convexPartsPartition->setVisible(false);
+
+	ui.drar_convexPart_part->setScale(3, 3);
+	ui.drar_convexPart_part->setGridVisibility(true);
+	ui.drar_convexPart_part->clearDrawArea();
+
+	ui.drar_convexPart_splittedVert->setScale(3, 3);
+	ui.drar_convexPart_splittedVert->setGridVisibility(true);
+	ui.drar_convexPart_splittedVert->clearDrawArea();
+
+	ui.drar_convexPart_splittedFaces->setScale(3, 3);
+	ui.drar_convexPart_splittedFaces->setGridVisibility(true);
+	ui.drar_convexPart_splittedFaces->clearDrawArea();
+
+	ui.drar_convexPart_optimal->setScale(3, 3);
+	ui.drar_convexPart_optimal->setGridVisibility(true);
+	ui.drar_convexPart_optimal->clearDrawArea();
+
+	connect(ui.btn_backToMainAlgoStages_fromConvexPartDetails, &QPushButton::clicked, this,
+		[=](bool checked) {
+			ui.convexPartsPartition->setVisible(false);
+			ui.mainAlgoImages->setVisible(true);
+		});
+
 #pragma endregion
 
 	isHintForSelectDrawingAreaShowned = false;
@@ -291,7 +368,7 @@ void ApplicationGUI::convertToSplittedMesh()
 	rotatedData.vertex_y = *y;
 	rotatedData.tryAddFace(edges->size(), *edges);
 
-	drawPolygonMesh(ui.drawingArea_test, 2, rotatedData.vertex_x, rotatedData.vertex_y, rotatedData.edges, rotatedData.faces);
+	drawPolygonMesh(ui.drar_mainStages_rotated, 2, rotatedData.vertex_x, rotatedData.vertex_y, rotatedData.edges, rotatedData.faces);
 
 	Mesh m = Mesh();
 	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(rotatedData);
@@ -300,20 +377,20 @@ void ApplicationGUI::convertToSplittedMesh()
 	m.splitByVerticalGrid();
 
 	auto SplittedByGridData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_2, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
+	drawPolygonMesh(ui.drar_mainStages_concavePoints, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
 
 	//auto splitedEdges = m.splitFaces(polygonArea / ui.spin_numOfParts->value());
 	auto splitedEdges = nullptr;
 
 	auto verticalSplittedData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_3, 2, verticalSplittedData.vertex_x, verticalSplittedData.vertex_y, verticalSplittedData.edges, verticalSplittedData.faces);
+	drawPolygonMesh(ui.drar_mainStages_convexParts, 2, verticalSplittedData.vertex_x, verticalSplittedData.vertex_y, verticalSplittedData.edges, verticalSplittedData.faces);
 
 	auto perims = m.getInternalHorizontalPerimeters();
 	auto optimal = m.getOptimalCombinationForInternalPerimeter(perims);
 	m.splitMeshByMask(optimal.second);
 
 	auto horisontalSplittedData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_4, 2, horisontalSplittedData.vertex_x, horisontalSplittedData.vertex_y, horisontalSplittedData.edges, horisontalSplittedData.faces);
+	drawPolygonMesh(ui.drar_mainStages_optimal, 2, horisontalSplittedData.vertex_x, horisontalSplittedData.vertex_y, horisontalSplittedData.edges, horisontalSplittedData.faces);
 
 	auto result = m.convertToPolygonData();
 	r.tryRrotateTheFigureBack(&result.vertex_x, &result.vertex_y);
@@ -358,17 +435,17 @@ void ApplicationGUI::setSliderLabelsPosition()
 	auto lbl_h = 16;
 	auto offset = 10;
 
-	ui.sld_minPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * (w- lbl_w)), 40, lbl_w, lbl_h);
+	ui.sld_minPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 40, lbl_w, lbl_h);
 
 	QRect d = ui.sld_maxPosLabel->geometry();
 	QRect droppedRect = QRect(d.left(), 40, d.width(), d.height());
 
 	if (droppedRect.intersects(ui.sld_minPosLabel->geometry()))
 	{
-		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w- lbl_w)), 0, lbl_w, lbl_h);
+		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 0, lbl_w, lbl_h);
 	}
 	else {
-		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w- lbl_w)), 40, lbl_w, lbl_h);
+		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 40, lbl_w, lbl_h);
 	}
 }
 
@@ -460,17 +537,17 @@ void ApplicationGUI::mousePressEvent(QMouseEvent* event)
 			if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
 				emit drawingAreaSelected(ui.polygonDrawingArea);
 			}
-			else if (ui.drawingArea_test->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.drawingArea_test);
+			else if (ui.drar_mainStages_rotated->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.drar_mainStages_rotated);
 			}
-			else if (ui.drawingArea_test_2->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.drawingArea_test_2);
+			else if (ui.drar_mainStages_concavePoints->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.drar_mainStages_concavePoints);
 			}
-			else if (ui.drawingArea_test_3->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.drawingArea_test_3);
+			else if (ui.drar_mainStages_convexParts->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.drar_mainStages_convexParts);
 			}
-			else if (ui.drawingArea_test_4->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.drawingArea_test_4);
+			else if (ui.drar_mainStages_optimal->isPointInBounds(point.x(), point.y())) {
+				emit drawingAreaSelected(ui.drar_mainStages_optimal);
 			}
 		}
 		else {
@@ -480,8 +557,8 @@ void ApplicationGUI::mousePressEvent(QMouseEvent* event)
 			else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y())) {
 				addPointToAngle(point.x(), point.y());
 			}
-			else if (ui.drawingArea_test->isPointInBounds(point.x(), point.y())) {
-				ui.drawingArea_test->drawEllipse(point, 10, false);
+			else if (ui.drar_mainStages_rotated->isPointInBounds(point.x(), point.y())) {
+				ui.drar_mainStages_rotated->drawEllipse(point, 10, false);
 			}
 		}
 	}
@@ -489,6 +566,7 @@ void ApplicationGUI::mousePressEvent(QMouseEvent* event)
 
 void ApplicationGUI::btn_drawPoly(bool checked)
 {
+	//FIGURE 1
 	polygon = new a::Polygon(10);
 
 	QPoint p;
@@ -512,6 +590,26 @@ void ApplicationGUI::btn_drawPoly(bool checked)
 	addPointToPolygon(p.x(), p.y());
 	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 55.0 }, false);
 	addPointToPolygon(p.x(), p.y());
+
+	/*
+	// FIGURE 2
+	polygon = new a::Polygon(7);
+
+	QPoint p;
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 30.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 15.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 11.6667 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 15.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 55.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 52.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 40.0 }, false);
+	addPointToPolygon(p.x(), p.y());*/
 }
 
 PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
@@ -536,7 +634,7 @@ PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
 		}
 	}
 
-	PolygonData * data = new PolygonData();
+	PolygonData* data = new PolygonData();
 	data->vertex_x = *x;
 	data->vertex_y = *y;
 	data->tryAddFace(edges->size(), *edges);
@@ -551,11 +649,11 @@ bool ApplicationGUI::tryDrawNextMesh() {
 	currentMesh++;
 	test2 = meshes[currentMesh]->convertToString();
 	auto data = meshes[currentMesh]->convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_2, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
 
-	auto leftTop = ui.drawingArea_test_2->LogicToPixelCoords({ 0, 10 }, true);
-	auto rightBottom = ui.drawingArea_test_2->LogicToPixelCoords({ 10, 0 }, true);
-	ui.drawingArea_test_2->drawText(QString::number(currentMesh), leftTop, rightBottom, true, Qt::black, QFont("Arial"), Qt::AlignCenter & Qt::AlignHCenter);
+	/*auto leftTop = ui.drar_partitionToConvex_current->LogicToPixelCoords({ 0, 10 }, true);
+	auto rightBottom = ui.drar_partitionToConvex_current->LogicToPixelCoords({ 10, 0 }, true);
+	ui.drar_partitionToConvex_current->drawText(QString::number(currentMesh), leftTop, rightBottom, true, Qt::black, QFont("Arial"), Qt::AlignCenter & Qt::AlignHCenter);*/
 }
 
 bool ApplicationGUI::tryDrawPrevMesh() {
@@ -565,19 +663,26 @@ bool ApplicationGUI::tryDrawPrevMesh() {
 	currentMesh--;
 	test2 = meshes[currentMesh]->convertToString();
 	auto data = meshes[currentMesh]->convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_2, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
 
-	auto leftTop = ui.drawingArea_test_2->LogicToPixelCoords({ 0, 10 }, true);
-	auto rightBottom = ui.drawingArea_test_2->LogicToPixelCoords({ 10, 0 }, true);
-	ui.drawingArea_test_2->drawText(QString::number(currentMesh), leftTop, rightBottom, true, Qt::black, QFont("Arial"), Qt::AlignCenter & Qt::AlignHCenter);
+	/*auto leftTop = ui.drar_partitionToConvex_current->LogicToPixelCoords({ 0, 10 }, true);
+	auto rightBottom = ui.drar_partitionToConvex_current->LogicToPixelCoords({ 10, 0 }, true);
+	ui.drar_partitionToConvex_current->drawText(QString::number(currentMesh), leftTop, rightBottom, true, Qt::black, QFont("Arial"), Qt::AlignCenter & Qt::AlignHCenter);*/
 }
 
 void ApplicationGUI::btn_doAlgo(bool checked)
 {
+	ui.btn_convexPartitionStages->setVisible(true);
+
 	if (anglePoints.first == nullptr || anglePoints.second == nullptr)
 		return;
 
 	auto data = convertPolygonToPolygonData();
+
+	Rotation r = Rotation(ui.spin_meshAngle->value(), RotationDirection::Right);
+	r.tryRotateFigure(&data->vertex_x, &data->vertex_y);
+
+	drawPolygonMesh(ui.drar_mainStages_rotated, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
 
 	Mesh m = Mesh();
 	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
@@ -586,17 +691,22 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	auto start = std::chrono::steady_clock::now();
 
 	auto points = m.findConcavePoints();
+
+	if (points.size() > 0) {
+		ui.btn_allConcavePartitions->setVisible(true);
+	}
+
 	auto meshesRef = *m.splitToConvexPolygons();
-	auto optimal = Mesh::getOptimalMesh(&meshesRef);
+	optimal = Mesh::getOptimalMesh(&meshesRef);
 
 	auto end = std::chrono::steady_clock::now();
 
 
 	auto start1 = std::chrono::steady_clock::now();
-	drawPolygonMesh(ui.drawingArea_test, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
+	drawPolygonMesh(ui.drar_mainStages_concavePoints, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
 	for (int i = 0; i < points.size(); ++i) {
-		auto pixel = ui.drawingArea_test->LogicToPixelCoords(QPointF(m.V[points[i]]->pos->x, m.V[points[i]]->pos->y), false);
-		ui.drawingArea_test->drawEllipse(pixel, 3, false, Qt::red);
+		auto pixel = ui.drar_mainStages_concavePoints->LogicToPixelCoords(QPointF(m.V[points[i]]->pos->x, m.V[points[i]]->pos->y), false);
+		ui.drar_mainStages_concavePoints->drawEllipse(pixel, 3, false, Qt::red);
 	}
 	test1 = m.convertToString();
 
@@ -613,38 +723,39 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	test3 = optimal->convertToString();
 
 	auto data2 = optimal->convertToPolygonData();
-	drawPolygonMesh(ui.drawingArea_test_3, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
-
-	/*ui.drawingArea_test_2->clear();
-	for (auto mesh : optimal) {
-		auto data2 = mesh->convertToPolygonData();
-		drawPolygonMesh(ui.drawingArea_test_3, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces, false);
-	}*/
+	drawPolygonMesh(ui.drar_mainStages_convexParts, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
+	drawPolygonMesh(ui.drar_partitionToConvex_optimal, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
 
 	auto end1 = std::chrono::steady_clock::now();
 
-	QMessageBox::information(this, "", 
+	QMessageBox::information(this, "",
 		"Algo time: " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()) + " ms.\n"
-		+ "Draw time: " +  QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end1 - start1).count()) + " ms.");
+		+ "Draw time: " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end1 - start1).count()) + " ms.");
+
+	test();
 }
 
-//void ApplicationGUI::test() {
-//	auto meshes = std::vector<Mesh*>();
-//
-//	for (auto face : optimal->F) {
-//		auto mesh = Mesh::createFromFace(face);
-//		auto area = mesh->F[0]->area;
-//		mesh->splitByVerticalGrid();
-//
-//		auto splitedEdges = mesh->splitFaces( area / 5);
-//
-//		auto perims = mesh->getInternalHorizontalPerimeters();
-//		auto optimal = mesh->getOptimalCombinationForInternalPerimeter(perims);
-//		mesh->splitMeshByMask(optimal.second);
-//
-//		meshes.push_back(mesh);
-//	}
-//}
+void ApplicationGUI::test() {
+	auto meshes = std::vector<Mesh*>();
+
+	for (auto face : optimal->F) {
+		auto mesh = Mesh::createFromFace(face);
+		mesh->splitByVerticalGrid();
+		mesh->splitFaces(face->area / 5);
+
+		auto perims = mesh->getInternalHorizontalPerimeters();
+		auto optimal = mesh->getOptimalCombinationForInternalPerimeter(perims);
+
+		mesh->splitMeshByMask(optimal.second);
+		meshes.push_back(mesh);
+	}
+
+	ui.drar_mainStages_optimal->clearDrawArea();
+	for (auto mesh : meshes) {
+		auto data = mesh->convertToPolygonData();
+		drawPolygonMesh(ui.drar_mainStages_optimal, 2, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
+	}
+}
 
 void ApplicationGUI::btn_saveMeshAsText(bool checked) {
 	if (!isHintForSelectDrawingAreaShowned) {
@@ -660,7 +771,7 @@ void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
 	setControlsDependsOnSelectingMode(false);
 
 	QString file_name = QFileDialog::getSaveFileName(this, "Save Text File", QDir::homePath(), "Text files(*.txt)");
-	
+
 	if (file_name.isEmpty()) {
 		QMessageBox::critical(this, "Error", "File name can not be empty");
 		return;
@@ -671,16 +782,16 @@ void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
 	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
 		toSave = polygonDrawingAreaMesh;
 	}
-	else if (drawingAreaOfMesh == ui.drawingArea_test) {
+	else if (drawingAreaOfMesh == ui.drar_mainStages_rotated) {
 		toSave = test1;
 	}
-	else if (drawingAreaOfMesh == ui.drawingArea_test_2) {
+	else if (drawingAreaOfMesh == ui.drar_mainStages_concavePoints) {
 		toSave = test2;
 	}
-	else if (drawingAreaOfMesh == ui.drawingArea_test_3) {
+	else if (drawingAreaOfMesh == ui.drar_mainStages_convexParts) {
 		toSave = test3;
 	}
-	else if (drawingAreaOfMesh == ui.drawingArea_test_4) {
+	else if (drawingAreaOfMesh == ui.drar_mainStages_optimal) {
 		toSave = test4;
 	}
 
@@ -706,7 +817,7 @@ void ApplicationGUI::btn_uploadMeshFromText(bool checked) {
 void ApplicationGUI::uploadMeshFromText(DrawingArea* drawingAreaOfMesh) {
 	disconnect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::uploadMeshFromText);
 	setControlsDependsOnSelectingMode(false);
-	
+
 	QString file_name = QFileDialog::getOpenFileName(this, "Choose PolygonalMesh source", QDir::homePath());
 
 	std::ifstream in(file_name.toStdString());
@@ -722,7 +833,7 @@ void ApplicationGUI::uploadMeshFromText(DrawingArea* drawingAreaOfMesh) {
 	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
 		drawPolygonMesh(drawingAreaOfMesh, 4, data.vertex_x, data.vertex_y, data.edges, data.faces);
 	}
-	else  {
+	else {
 		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
 	}
 }
@@ -743,8 +854,8 @@ void ApplicationGUI::saveDrawingAreaAsImage(DrawingArea* drawingAreaOfMesh)
 	setControlsDependsOnSelectingMode(false);
 
 	QString file_name = QFileDialog::getSaveFileName(this, "Save Image File", QDir::homePath(), "Images (*.png)");
-	
-	if(file_name.isEmpty())
+
+	if (file_name.isEmpty())
 		QMessageBox::critical(this, "Error", "File name can not be empty");
 	else
 		drawingAreaOfMesh->saveImage(file_name, 1);
@@ -788,10 +899,10 @@ void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawin
 		ui.sld_areaOfPart->setEnabled(false);
 
 		ui.polygonDrawingArea->setHoverEffectEnabled(true);
-		ui.drawingArea_test->setHoverEffectEnabled(true);
-		ui.drawingArea_test_2->setHoverEffectEnabled(true);
-		ui.drawingArea_test_3->setHoverEffectEnabled(true);
-		ui.drawingArea_test_4->setHoverEffectEnabled(true);
+		ui.drar_mainStages_rotated->setHoverEffectEnabled(true);
+		ui.drar_mainStages_concavePoints->setHoverEffectEnabled(true);
+		ui.drar_mainStages_convexParts->setHoverEffectEnabled(true);
+		ui.drar_mainStages_optimal->setHoverEffectEnabled(true);
 	}
 	else {
 		int cnt = 0;
@@ -815,19 +926,9 @@ void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawin
 		ui.sld_areaOfPart->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
 
 		ui.polygonDrawingArea->deleteAllEffects();
-		ui.drawingArea_test->deleteAllEffects();
-		ui.drawingArea_test_2->deleteAllEffects();
-		ui.drawingArea_test_3->deleteAllEffects();
-		ui.drawingArea_test_4->deleteAllEffects();
-	}
-}
-
-void ApplicationGUI::keyPressEvent(QKeyEvent* event)
-{
-	if (event->key() == Qt::Key_A) {
-		tryDrawPrevMesh();
-	}
-	if (event->key() == Qt::Key_D) {
-		tryDrawNextMesh();
+		ui.drar_mainStages_rotated->deleteAllEffects();
+		ui.drar_mainStages_concavePoints->deleteAllEffects();
+		ui.drar_mainStages_convexParts->deleteAllEffects();
+		ui.drar_mainStages_optimal->deleteAllEffects();
 	}
 }
