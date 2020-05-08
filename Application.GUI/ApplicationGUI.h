@@ -75,6 +75,7 @@ private:
 	///
 
 	void drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean = true);
+	void drawPolygonData(DrawingArea* drawingArea, int radiusOfPoints, PolygonData data, bool isNeedToClean = true);
 
 	void setSliderLabelsPosition();
 
@@ -90,16 +91,21 @@ private:
 	std::vector<bool> controlsStatesBeforeSelectingMode;
 	bool isHintForSelectDrawingAreaShowned;
 
-	std::vector<Mesh*> meshes;
-	int currentMesh;
-	bool tryDrawNextMesh();
-	bool tryDrawPrevMesh();
+	std::vector<Mesh*> conexPartitionsMeshes;
+	int currentConexPartitionsMeshe;
+	bool tryDrawNextConvexPartitionMesh();
+	bool tryDrawPrevConvexPartitionMesh();
+
+	std::vector<std::tuple<PolygonData, PolygonData, PolygonData, PolygonData>> partPartitions;
+	int currentPartPartition;
+	bool tryDrawNextPartPartition();
+	bool tryDrawPrevPartPartition();
 
 	void setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea);
 
 	//////////
 	Mesh* optimal;
-	void test();
+	void test(Rotation r);
 
 Q_SIGNALS:
 	void drawingAreaSelected(DrawingArea* selectedDrawingArea);
