@@ -39,7 +39,7 @@ bool PolygonData::tryAddFace(int numOfSides, vectorI pointsNumbers) {
 	}
 
 	for (int i = 0; i < pointsNumbers.size(); ++i) {
-		edges.push_back( pointsNumbers[i]);
+		edges.push_back(pointsNumbers[i]);
 	}
 
 	faces.push_back(edges.size());
@@ -53,7 +53,7 @@ point Rotation::rotate(double x1, double y1, double angleCos, double angleSin)
 {
 	auto x2 = (*x0 - x1) * angleCos - (*y0 - y1) * angleSin + *xOffset;
 	auto y2 = (*x0 - x1) * angleSin + (*y0 - y1) * angleCos + *yOffset;
-	
+
 	return point{ x2, y2 };
 }
 
@@ -88,7 +88,7 @@ void Rotation::calculateCentralPoint(double x_min, double x_max, double y_min, d
 
 void Rotation::calculateOffsets(point left, point right, point top, point bottom, double sin, double cos)
 {
-	point borderPoints[] = {left, right, top, bottom};
+	point borderPoints[] = { left, right, top, bottom };
 
 	xOffset = x0;
 	yOffset = y0;
@@ -137,6 +137,22 @@ double Rotation::findAngleOfSegmentInDegrees(double x1, double y1, double x2, do
 	return angle_degree;
 }
 
+std::pair<Algorithms::Point*, Algorithms::Point*> Rotation::findPointsOfSegmentByAngle(double angle, double width, double height)
+{
+	if (abs(angle) < DBL_EPSILON) {
+		return { new Algorithms::Point{ width / 2, height / 10 },  new Algorithms::Point{ width / 2, height / 10 * 9} };
+	}
+
+	auto angle_rad = angle / 180 * 3.14;
+	auto angle_tg = tan(angle_rad);
+
+	auto y2 = -width / angle_tg;
+
+	auto diff = height * width / y2;
+
+	return { new Algorithms::Point{ diff / 2, 0 },  new Algorithms::Point{ width - diff / 2, height} };
+}
+
 Rotation::Rotation(double angleInDegrees, RotationDirection direction)
 {
 	this->x0 = nullptr;
@@ -161,14 +177,14 @@ void Rotation::rotateFigure90(vectorD* x, vectorD* y)
 	}
 }
 
-void Rotation::rotatePoint90(Algorithms::Point * p)
+void Rotation::rotatePoint90(Algorithms::Point* p)
 {
 	auto temp = p->x;
 	p->x = p->y;
 	p->y = temp;
 }
 
-bool Rotation::tryRotateFigure(vectorD *x, vectorD *y)
+bool Rotation::tryRotateFigure(vectorD* x, vectorD* y)
 {
 	if (std::abs(angleInDegrees) < DBL_EPSILON) {
 		return true;
@@ -189,7 +205,7 @@ bool Rotation::tryRotateFigure(vectorD *x, vectorD *y)
 	return true;
 }
 
-bool Rotation::tryRrotateTheFigureBack(vectorD *x, vectorD *y)
+bool Rotation::tryRrotateTheFigureBack(vectorD* x, vectorD* y)
 {
 	if (this->xOffset == nullptr || this->yOffset == nullptr || this->x0 == nullptr || this->y0 == nullptr)
 		return false;
@@ -201,8 +217,6 @@ bool Rotation::tryRrotateTheFigureBack(vectorD *x, vectorD *y)
 	double degree = angleInDegrees * 3.14 / 180;
 	double angleCos = cos(degree);
 	double angleSin = sin(degree);
-
-	calculateParams(*x, *y, angleSin, angleCos);
 
 	for (int i = 0; i < x->size(); ++i) {
 		auto p = rotate((*x)[i], (*y)[i], angleCos, angleSin);

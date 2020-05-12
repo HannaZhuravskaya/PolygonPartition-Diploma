@@ -134,9 +134,43 @@ bool Polygon::isConvex()
 		}
 	}
 
-	isLeftTraversal = got_negative;
+	//isLeftTraversal = got_negative;
 
 	return true;
+}
+
+bool Polygon::isLeftTraversal(double eps) {
+	isPointsCompleted();
+
+	auto numOfMinY = 0;
+	for (int i = 1; i < numOfSides; i++)
+	{
+		if ((points.at(numOfMinY).y - points.at(i).y) > eps) {
+			numOfMinY = i;
+		}
+	}
+
+	auto prev = points.at((numOfMinY + numOfSides - 1) % numOfSides);
+	auto next = points.at((numOfMinY + 1) % numOfSides);
+	auto cur = points.at(numOfMinY);
+
+	if (abs(prev.y - cur.y) < eps && abs(cur.y - next.y) < eps) {
+		if (prev.x < next.x) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	else {
+		auto d = next.x * prev.y - prev.x * next.y;
+		if(d < -eps){
+			return false;
+		}
+		else {
+			return true;
+		}
+	}
 }
 
 Point Polygon::getPreviousPoint() {

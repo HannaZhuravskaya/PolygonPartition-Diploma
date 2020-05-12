@@ -154,7 +154,7 @@ public:
 	int isPointInPolygonTest(Point* P);
 
 	std::vector<int> findConcavePoints();
-	std::vector<Mesh*>* splitToConvexPolygons();
+	std::vector<Mesh*>* splitToConvexPolygons(std::vector<int> concavePoints);
 	static Mesh* getOptimalMesh(std::vector<Mesh*>* meshes);
 	/*static std::vector<Mesh*> getOptimalMesh(std::vector<Mesh*>* meshes);*/
 //	void splitToConvexPolygonsByPermutation();

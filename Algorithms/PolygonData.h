@@ -57,6 +57,7 @@ private:
 
 public:
 	static double findAngleOfSegmentInDegrees(double x1, double y1, double x2, double y2);
+	static std::pair<Algorithms::Point*, Algorithms::Point*> findPointsOfSegmentByAngle(double angle, double width, double height);
 	static void rotateFigure90(vectorD* x, vectorD* y);
 	static void rotatePoint90(Algorithms::Point * p);
 

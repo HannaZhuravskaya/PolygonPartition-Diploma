@@ -1,5 +1,9 @@
 #include "ApplicationGUI.h"
 
+QColor ApplicationGUI::getNextColor() {
+	return QColor(rand() % 256, rand() % 256, rand() % 256, 100);
+}
+
 ApplicationGUI::ApplicationGUI(QWidget* parent)
 	: QWidget(parent)
 {
@@ -182,6 +186,8 @@ void ApplicationGUI::initializeControls()
 
 void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 {
+	clearAllAlgoDrawingAreas();
+
 	if (grb_name == "polygonProperties") {
 		if (isNext) {
 			activeGroupBox = "areaProperties";
@@ -246,6 +252,7 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_apply_angle->setEnabled(true);
 			ui.btn_reset_angle->setEnabled(false);
 			anglePoints = std::make_pair(nullptr, nullptr);
+			ui.meshAngleDrawingArea->clearDrawArea();
 
 			isModeToSelectDrawingArea = false;
 		}
@@ -277,27 +284,39 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			anglePoints = std::make_pair(nullptr, nullptr);
 			ui.meshAngleDrawingArea->clearDrawArea();
 
+			auto data = convertPolygonToPolygonData();
+			drawPolygonData(ui.polygonDrawingArea, 4, *data);
+
 			isModeToSelectDrawingArea = false;
 		}
 	}
 }
 
-void ApplicationGUI::addPointToPolygon(int x, int y)
+void ApplicationGUI::addPointToPolygon(double x, double y, bool isLogicCoords)
 {
-	auto logicPoint = ui.polygonDrawingArea->PixelToLogicCoords(QPoint(x, y), false);
+	QPointF logicPoint, pixelPoint;
+
+	if (!isLogicCoords) {
+		pixelPoint = QPointF(x, y);
+	}
+	else {
+		pixelPoint = ui.polygonDrawingArea->LogicToPixelCoords(QPoint(x, y), false);
+	}
+
+	logicPoint = ui.polygonDrawingArea->PixelToLogicCoords(QPoint(pixelPoint.x(), pixelPoint.y()), false);
 
 	if (polygon != nullptr && polygon->tryAddPoint({ logicPoint.x(), logicPoint.y() })) {
-		ui.polygonDrawingArea->drawEllipse(QPoint(x, y), 5, false, Qt::black);
+		ui.polygonDrawingArea->drawEllipse(QPoint(pixelPoint.x(), pixelPoint.y()), 5, false, Qt::black);
 
 		if (polygon->getNumOfPoints() > 1)
 		{
 			auto prev = polygon->getPreviousPoint();
-			ui.polygonDrawingArea->drawLine(ui.polygonDrawingArea->LogicToPixelCoords(QPointF(prev.x, prev.y), false), QPoint(x, y), false, Qt::black, 1);
+			ui.polygonDrawingArea->drawLine(ui.polygonDrawingArea->LogicToPixelCoords(QPointF(prev.x, prev.y), false), QPoint(pixelPoint.x(), pixelPoint.y()), false, Qt::black, 1);
 		}
 
 		if (polygon->getNumOfSides() == polygon->getNumOfPoints()) {
 			auto firstPoint = polygon->getPointAt(0);
-			ui.polygonDrawingArea->drawLine(ui.polygonDrawingArea->LogicToPixelCoords(QPointF(firstPoint.x, firstPoint.y), false), QPoint(x, y), false, Qt::black, 1);
+			ui.polygonDrawingArea->drawLine(ui.polygonDrawingArea->LogicToPixelCoords(QPointF(firstPoint.x, firstPoint.y), false), QPoint(pixelPoint.x(), pixelPoint.y()), false, Qt::black, 1);
 
 			calculatePolygonProperties();
 		}
@@ -358,7 +377,7 @@ void ApplicationGUI::convertToSplittedMesh()
 	vectorD* y = new vectorD(polygon->getNumOfPoints());
 	vectorI* edges = new vectorI(polygon->getNumOfPoints());
 
-	if (polygon->isLeftTraversal) {
+	if (polygon->isLeftTraversal(EPS)) {
 		for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
 			auto point = polygon->getPointAt(i);
 			(*x)[i] = point.x;
@@ -414,13 +433,23 @@ void ApplicationGUI::convertToSplittedMesh()
 
 void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean)
 {
+	drawColoredPolygonMesh(drawingArea, radiusOfPoints, x, y, edges, faces, isNeedToClean, false);
+}
+
+void ApplicationGUI::drawColoredPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean, bool isColored) {
 	if (isNeedToClean) {
 		drawingArea->clearDrawArea();
 	}
 
-	for (int i = 0; i < x.size(); ++i) {
-		auto pixel = drawingArea->LogicToPixelCoords(QPointF(x[i], y[i]), false);
-		drawingArea->drawEllipse(pixel, radiusOfPoints, false, Qt::black);
+	if (isColored) {
+		for (int i = 1; i < faces.size(); ++i) {
+			auto p = QPolygonF();
+			for (int j = faces[i - 1]; j < faces[i]; ++j) {
+				p.push_back(drawingArea->LogicToPixelCoords(QPointF(x[edges[j]], y[edges[j]]), false));
+			}
+
+			drawingArea->fillPath(p, 1, false, getNextColor());
+		}
 	}
 
 	for (int i = 1; i < faces.size(); ++i) {
@@ -438,6 +467,11 @@ void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoint
 					false, Qt::black, 1);
 			}
 		}
+	}
+
+	for (int i = 0; i < x.size(); ++i) {
+		auto pixel = drawingArea->LogicToPixelCoords(QPointF(x[i], y[i]), false);
+		drawingArea->drawEllipse(pixel, radiusOfPoints, false, Qt::black);
 	}
 
 	//	ui.polygonDrawingArea->drawLine(ui.polygonDrawingArea->LogicToPixelCoords(QPointF(firstPixelPoint.x, firstPixelPoint.y), false), QPoint(x, y), false, Qt::black, 1);
@@ -481,7 +515,22 @@ void ApplicationGUI::btn_reset_clicked(bool checked)
 
 void ApplicationGUI::btn_apply_angle_clicked(bool checked)
 {
-	setActiveGroupBox("meshProperties", true);
+	/*auto points = Rotation::findPointsOfSegmentByAngle(ui.spin_meshAngle->value(), ui.meshAngleDrawingArea->width(), ui.meshAngleDrawingArea->height());
+	anglePoints = { nullptr, nullptr };
+
+	int x1, x2, y1, y2, x, y;
+	x = ui.meshAngleDrawingArea->x();
+	y = ui.meshAngleDrawingArea->y();
+	x1 = points.first->x + x;
+	y1 = points.first->y + y;
+	x2 = points.second->x + x;
+	y2 = points.second->y + y;
+	addPointToAngle(x1, y1);
+	addPointToAngle(x2, y2);*/
+	/*auto p = ui.meshAngleDrawingArea->LogicToPixelCoords(QPointF(points.first->x, points.first->y), true);
+	addPointToAngle(p.x(), p.y());
+	p = ui.meshAngleDrawingArea->LogicToPixelCoords(QPointF(points.second->x, points.second->y), true);
+	addPointToAngle(p.x(), p.y());*/
 }
 
 void ApplicationGUI::btn_reset_angle_clicked(bool checked)
@@ -515,6 +564,10 @@ void ApplicationGUI::calculatePolygonProperties()
 	else {
 		polygonArea = polygon->getSquare();
 		setActiveGroupBox("areaProperties", true);
+		auto data = convertPolygonToPolygonData();
+		Mesh m = Mesh();
+		m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
+		polygonDrawingAreaMesh = m.convertToString();
 	}
 }
 
@@ -637,7 +690,7 @@ PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
 	vectorD* y = new vectorD(polygon->getNumOfPoints());
 	vectorI* edges = new vectorI(polygon->getNumOfPoints());
 
-	if (polygon->isLeftTraversal) {
+	if (polygon->isLeftTraversal(EPS)) {
 		for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
 			auto point = polygon->getPointAt(i);
 			(*x)[i] = point.x;
@@ -718,12 +771,27 @@ bool ApplicationGUI::tryDrawPrevPartPartition() {
 	drawPolygonData(ui.drar_convexPart_optimal, 2, std::get<3>(cur));
 }
 
+std::vector<int> ApplicationGUI::getConcavePoints() {
+	auto data = convertPolygonToPolygonData();
+
+	Mesh m = Mesh();
+	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
+
+	return m.findConcavePoints();
+}
+
 void ApplicationGUI::btn_doAlgo(bool checked)
 {
 	ui.btn_convexPartitionStages->setVisible(true);
 
 	if (anglePoints.first == nullptr || anglePoints.second == nullptr)
 		return;
+
+	auto points = getConcavePoints();
+
+	if (points.size() > 0) {
+		ui.btn_allConcavePartitions->setVisible(true);
+	}
 
 	auto data = convertPolygonToPolygonData();
 
@@ -738,13 +806,7 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 
 	auto start = std::chrono::steady_clock::now();
 
-	auto points = m.findConcavePoints();
-
-	if (points.size() > 0) {
-		ui.btn_allConcavePartitions->setVisible(true);
-	}
-
-	auto meshesRef = *m.splitToConvexPolygons();
+	auto meshesRef = *m.splitToConvexPolygons(points);
 	optimal = Mesh::getOptimalMesh(&meshesRef);
 
 	auto end = std::chrono::steady_clock::now();
@@ -776,9 +838,9 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 
 	auto end1 = std::chrono::steady_clock::now();
 
-	QMessageBox::information(this, "",
+	/*QMessageBox::information(this, "",
 		"Algo time: " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()) + " ms.\n"
-		+ "Draw time: " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end1 - start1).count()) + " ms.");
+		+ "Draw time: " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end1 - start1).count()) + " ms.");*/
 
 	test(r);
 }
@@ -788,11 +850,17 @@ void ApplicationGUI::test(Rotation r) {
 	auto meshes = std::vector<Mesh*>();
 
 	for (auto face : optimal->F) {
+		auto partArea = face->area / 5;
+		if (partArea < 0.1)
+		{
+			continue;
+		}
+
 		auto mesh = Mesh::createFromFace(face);
 		auto stage1 = mesh->convertToPolygonData();
 		mesh->splitByVerticalGrid();
 		auto stage2 = mesh->convertToPolygonData();
-		mesh->splitFaces(face->area / 5);
+		mesh->splitFaces(partArea);
 		auto stage3 = mesh->convertToPolygonData();
 
 		auto perims = mesh->getInternalHorizontalPerimeters();
@@ -807,12 +875,19 @@ void ApplicationGUI::test(Rotation r) {
 
 	ui.drar_mainStages_optimal->clearDrawArea();
 	ui.polygonDrawingArea->clearDrawArea();
+
 	for (auto mesh : meshes) {
 		auto data = mesh->convertToPolygonData();
 		drawPolygonMesh(ui.drar_mainStages_optimal, 2, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
 
-	/*	r.tryRrotateTheFigureBack(&data.vertex_x, &data.vertex_y);
-		drawPolygonMesh(ui.polygonDrawingArea, 4, data.vertex_x, data.vertex_y, data.edges, data.faces, false);*/
+		r.tryRrotateTheFigureBack(&data.vertex_x, &data.vertex_y);
+		drawColoredPolygonMesh(ui.polygonDrawingArea, 0, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
+	}
+
+	auto data = convertPolygonToPolygonData();
+	for (int i = 0; i < data->vertex_x.size(); ++i) {
+		auto pixel = ui.polygonDrawingArea->LogicToPixelCoords(QPointF(data->vertex_x[i], data->vertex_y[i]), false);
+		ui.polygonDrawingArea->drawEllipse(pixel, 4, false, Qt::black);
 	}
 
 	currentPartPartition = -1;
@@ -894,7 +969,13 @@ void ApplicationGUI::uploadMeshFromText(DrawingArea* drawingAreaOfMesh) {
 
 	auto data = mesh->convertToPolygonData();
 	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
-		drawPolygonMesh(drawingAreaOfMesh, 4, data.vertex_x, data.vertex_y, data.edges, data.faces);
+		ui.polygonDrawingArea->clearDrawArea();
+		polygon = new a::Polygon(data.vertex_x.size());
+		ui.spin_numOfSides->setValue(polygon->getNumOfSides());
+
+		for (int i = 0; i < data.vertex_x.size(); ++i) {
+			addPointToPolygon(data.vertex_x[i], data.vertex_y[i], true);
+		}
 	}
 	else {
 		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
@@ -994,4 +1075,19 @@ void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawin
 		ui.drar_mainStages_convexParts->deleteAllEffects();
 		ui.drar_mainStages_optimal->deleteAllEffects();
 	}
+}
+
+void ApplicationGUI::clearAllAlgoDrawingAreas()
+{
+	ui.drar_mainStages_rotated->clearDrawArea();
+	ui.drar_mainStages_concavePoints->clearDrawArea();
+	ui.drar_mainStages_convexParts->clearDrawArea();
+	ui.drar_mainStages_optimal->clearDrawArea();
+
+	ui.btn_allConcavePartitions->setVisible(false);
+	ui.btn_convexPartitionStages->setVisible(false);
+
+	ui.convexPartitions->setVisible(false);
+	ui.convexPartsPartition->setVisible(false);
+	ui.mainAlgoImages->setVisible(true);
 }

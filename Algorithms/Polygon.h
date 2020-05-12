@@ -48,7 +48,8 @@ namespace Algorithms
 		Point getPreviousPoint();
 		Point getPointAt(int index);
 		double crossProductLength(Point a, Point b, Point c);
-		bool isLeftTraversal;
+		//bool isLeftTraversal;
+		bool isLeftTraversal(double eps);
 	};
 
 	static class ALGORITHMS_API Intersection

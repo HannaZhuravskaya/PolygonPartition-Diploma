@@ -63,7 +63,7 @@ private:
 	void initializeControls();
 	void setActiveGroupBox(std::string grb_name, bool isNext);
 
-	void addPointToPolygon(int x, int y);
+	void addPointToPolygon(double x, double y, bool isLogicCoords = false);
 	void addPointToAngle(int x, int y);
 	bool isInMeshAngleDrawingAreaBounds(int x, int y);
 	void mouseMoveEvent(QMouseEvent* event);
@@ -75,7 +75,10 @@ private:
 	///
 
 	void drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean = true);
+	void drawColoredPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean = true, bool isColored = true);
 	void drawPolygonData(DrawingArea* drawingArea, int radiusOfPoints, PolygonData data, bool isNeedToClean = true);
+
+	QColor getNextColor();
 
 	void setSliderLabelsPosition();
 
@@ -102,6 +105,9 @@ private:
 	bool tryDrawPrevPartPartition();
 
 	void setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea);
+
+	void clearAllAlgoDrawingAreas();
+	std::vector<int> getConcavePoints();
 
 	//////////
 	Mesh* optimal;

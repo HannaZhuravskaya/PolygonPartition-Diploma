@@ -55,6 +55,31 @@ void DrawingArea::drawEllipse(QPoint point, int windowRadius, bool isWidjetCoord
 	setDefaultPen();
 }
 
+void DrawingArea::fillPath(QPolygonF polygon, int windowRadius, bool isWidjetCoords, QColor fillColor, QColor borderColor, double borderWidth) {
+	painter->setPen(QPen(borderColor, borderWidth));
+	painter->setBrush(fillColor);
+
+	if (!isWidjetCoords) {
+		auto temp = QPolygonF();
+
+		for (int i = 0; i < polygon.size(); ++i) {
+			auto point = polygon.at(i);
+			point = AppToWidjetCoords( QPoint{ (int)point.x(), (int)point.y() });
+			temp.push_back(point);
+		}
+
+		polygon = temp;
+	}
+
+	auto path = QPainterPath();
+	path.addPolygon(polygon);
+
+	painter->fillPath(path, painter->brush());
+	this->setPixmap(*pixmap);
+
+	setDefaultPen();
+}
+
 void DrawingArea::drawLine(QPoint firstPoint, QPoint secondPoint, bool isWidjetCoords, QColor fillColor, double borderWidth) {
 	painter->setPen(QPen(fillColor, borderWidth));
 
