@@ -6,6 +6,8 @@
 
 #pragma region Base mesh operations
 
+const int maxNumToSplit = 20;
+
 Mesh::Mesh()
 {
 }
@@ -463,71 +465,6 @@ PolygonData Mesh::convertToPolygonData() {
 	}
 
 	return data;
-}
-
-void Mesh::convertFromPolygonData(PolygonData data) {
-	/*for (int i = 0; i < data.getNumOfVertexes(); ++i) {
-		Vertex* v = new Vertex;
-		v->pos = new Point{ data.vertex_x[i], data.vertex_y[i] };
-		v->numOfVertex = i;
-		V.push_back(v);
-	}
-
-	for (int i = 1; i < data.faces.size(); ++i) {
-		Face* f = new Face;
-
-		double* res = nullptr;
-		for (int j = data.faces[i - 1]; j < data.faces[i]; ++j) {
-			Edge* e = new Edge;
-			E.push_back(e);
-
-			if (res == nullptr) {
-				auto r = crossProductLength(
-					*V[data.edges[(j % data.faces[i]) + data.faces[i - 1]]]->pos,
-					*V[data.edges[((j + 1) % data.faces[i]) + data.faces[i - 1]]]->pos,
-					*V[data.edges[((j + 2) % data.faces[i]) + data.faces[i - 1]]]->pos);
-
-				if (abs(r) > EPS) {
-					res = &r;
-				}
-			}
-		}
-
-		f->e = E[data.faces[i - 1]];
-		F.push_back(f);
-
-		for (int j = data.faces[i - 1]; j < data.faces[i]; ++j) {
-			auto numOfPrevEdgeInData = data.edges[((j - 1 + data.faces[i]) % data.faces[i]) + data.faces[i - 1]];
-			auto numOfNextEdgeInData = data.edges[((j + 1) % data.faces[i]) + data.faces[i - 1]];
-
-			if (*res > 0) {
-				setEdge(
-					E[j],
-					V[data.edges[j]],
-					f,
-					E[numOfNextEdgeInData],
-					E[numOfPrevEdgeInData],
-					nullptr);
-
-				if (V[data.edges[j]]->e == nullptr) {
-					V[data.edges[j]]->e = E[j];
-				}
-			}
-			else if (*res < 0) {
-				setEdge(
-					E[j],
-					V[numOfNextEdgeInData],
-					f,
-					E[numOfPrevEdgeInData],
-					E[numOfNextEdgeInData],
-					nullptr);
-				if (V[numOfNextEdgeInData]->e == nullptr) {
-					V[numOfNextEdgeInData]->e = E[j];
-				}
-			}
-
-		}
-	}*/
 }
 
 void Mesh::convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data) {
@@ -1657,47 +1594,6 @@ Mesh* Mesh::createFromFace(Face* face) {
 	return mesh;
 }
 
-//std::vector<Mesh*> Mesh::getOptimalMesh(std::vector<Mesh*>* meshes) {
-//	//std::pair<std::vector<std::pair<Mesh*, double>> *, Mesh*> Mesh::getOptimalMesh(std::vector<Mesh*>* meshes) {
-//
-//
-//	double min = DBL_MAX;
-//	std::vector<Mesh*> optimal;
-//	//std::vector<std::pair<Mesh*, double> * meshesWithFunc = new std::vector<std::pair<Mesh*, double>>();
-//
-//	for (auto mesh : *meshes) {
-//		double func = 0.0;
-//		std::vector<Mesh*>* meshByFaces = new std::vector<Mesh*>();
-//
-//		for (auto face : mesh->F) {
-//			auto cur = Mesh::createFromFace(face);
-//			cur->splitByVerticalGrid();
-//			auto splitedEdges = cur->splitFaces(cur->F[0]->area / 5.0);
-//			auto perims = cur->getInternalHorizontalPerimeters();
-//			auto optimal = cur->getOptimalCombinationForInternalPerimeter(perims);
-//			cur->splitMeshByMask(optimal.second);
-//
-//			meshByFaces->push_back(cur);
-//
-//			for (auto newFace : cur->F) {
-//				func += newFace->perimeter * newFace->perimeter / newFace->area;
-//			}
-//		}
-//
-//		//
-//		///is it nessesary
-//		/*for (auto face: mesh->F) {
-//			func += face->perimeter * face->perimeter / face->area;
-//		}*/
-//
-//		if (min > func){
-//			min = func;
-//			optimal = *meshByFaces;
-//		}
-//	}
-//
-//	return optimal;
-//}
 
 Mesh* Mesh::getOptimalMesh(std::vector<Mesh*>* meshes) {
 	double min = DBL_MAX;
@@ -1717,6 +1613,84 @@ Mesh* Mesh::getOptimalMesh(std::vector<Mesh*>* meshes) {
 
 	return optimal;
 }
+
+Mesh* Mesh::getOptimalMeshWithMaxSquareForSplit(std::vector<Mesh*>* meshes, double minS, double maxS) {
+	double minMeshS = DBL_MAX;
+	double minNonSplittedSquare = DBL_MAX;
+	Mesh* optimal = nullptr;
+
+	for (auto mesh : *meshes) {
+		double func = 0.0;
+		double nonSplitted = 0.0;
+		for (auto face : mesh->F) {
+			if (!Mesh::canBeSplittedToEqualSquareParts(face, minS, maxS)) {
+				nonSplitted += face->area;
+			}
+
+			func += face->perimeter * face->perimeter / face->area;
+		}
+
+		if (minNonSplittedSquare > nonSplitted) {
+			minNonSplittedSquare = nonSplitted;
+			minMeshS = func;
+			optimal = mesh;
+		}
+		else if (abs(minNonSplittedSquare - nonSplitted) < EPS) {
+			if (minMeshS > func) {
+				minMeshS = func;
+				optimal = mesh;
+			}
+		}
+	}
+
+	return optimal;
+}
+
+bool Mesh::canBeSplittedToEqualSquareParts(Face* face, double minS, double maxS) {
+	if (face->area > minS && face->area < maxS)
+		return true;
+
+	auto minNumOfParts = (int)ceil(face->area / maxS);
+	auto maxNumOfParts = (int)floor(face->area / minS);
+
+	if (minNumOfParts > maxNumToSplit)
+		return false;
+
+	if (minNumOfParts == 1)
+		++minNumOfParts;
+
+	if (minNumOfParts > maxNumOfParts) {
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
+double Mesh::getPartAreaToSplitMeshTEST(Face* face, double minS, double maxS) {
+	if (face->area > minS && face->area < maxS)
+		return face->area;
+
+	auto minNumOfParts = (int)ceil(face->area / maxS);
+	auto maxNumOfParts = (int)floor(face->area / minS);
+
+	if (minNumOfParts == 1)
+		++minNumOfParts;
+
+	if (minNumOfParts > maxNumOfParts || minNumOfParts > maxNumToSplit) {
+		throw std::exception("Can not split mesh.");
+	}
+
+	auto num = (int)floor((double)(minNumOfParts + maxNumOfParts) / 2);
+
+	if (num > maxNumToSplit) {
+		num = maxNumToSplit;
+	}
+
+	//return face->area / num;
+	return face->area / minNumOfParts;
+}
+
 
 std::vector<Mesh*>* Mesh::splitToConvexPolygons(std::vector<int> concavePoints)
 {
