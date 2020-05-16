@@ -18,12 +18,13 @@ ApplicationGUI::ApplicationGUI(QWidget* parent)
 
 	setMouseTracking(true);
 	ui.polygonDrawingArea->setMouseTracking(true, mouseCoordinates);
-	//ui.meshAngleDrawingArea->setMouseTracking(false);
 }
 
 void ApplicationGUI::initializeControls()
 {
 #pragma region Main Stages
+
+	ui.progressBar->setVisible(false);
 
 	////////////////////////////////
 	currentConexPartitionsMeshe = -1;
@@ -77,7 +78,7 @@ void ApplicationGUI::initializeControls()
 			setSliderLabelsPosition();
 		});
 
-	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this, [=]() { btn_doAlgo(true); });
+	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this, [=]() { setActiveGroupBox("meshProperties", true); btn_doAlgo(true); });
 #pragma endregion
 
 #pragma region Mesh properties
@@ -127,11 +128,11 @@ void ApplicationGUI::initializeControls()
 
 	connect(ui.btn_goToNextPartition, &QPushButton::clicked, this,
 		[=](bool checked) {
-			tryDrawNextConvexPartitionMesh(); 
+			tryDrawNextConvexPartitionMesh();
 			ui.lbl_numOfConvexPartitions->setText("Partition " + QString::number(currentConexPartitionsMeshe + 1) + " / " + QString::number(conexPartitionsMeshes.size()));
 		});
 
-	connect(ui.btn_goToPrevPartition, &QPushButton::clicked, this, 
+	connect(ui.btn_goToPrevPartition, &QPushButton::clicked, this,
 		[=](bool checked) {
 			tryDrawPrevConvexPartitionMesh();
 			ui.lbl_numOfConvexPartitions->setText("Partition " + QString::number(currentConexPartitionsMeshe + 1) + " / " + QString::number(conexPartitionsMeshes.size()));
@@ -244,7 +245,7 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.spin_numOfSides->setEnabled(false);
 
 			ui.lbl_polygonArea->setText(QString::number(polygonArea));
-			ui.sld_areaOfPart->setMaximum(polygonArea * 10);
+			ui.sld_areaOfPart->setMaximum(polygonArea * SLD_SCALE / 2);
 			ui.sld_areaOfPart->setEnabled(true);
 			sliderRangeChanged();
 
@@ -474,7 +475,6 @@ void ApplicationGUI::drawColoredPolygonMesh(DrawingArea* drawingArea, int radius
 		drawingArea->drawEllipse(pixel, radiusOfPoints, false, Qt::black);
 	}
 
-	//	ui.polygonDrawingArea->drawLine(ui.polygonDrawingArea->LogicToPixelCoords(QPointF(firstPixelPoint.x, firstPixelPoint.y), false), QPoint(x, y), false, Qt::black, 1);
 }
 
 void ApplicationGUI::drawPolygonData(DrawingArea* drawingArea, int radiusOfPoints, PolygonData data, bool isNeedToClean)
@@ -575,7 +575,7 @@ void ApplicationGUI::sliderRangeChanged()
 {
 	if (ui.sld_areaOfPart->maximum() > 0)
 	{
-		ui.sld_areaOfPart->setMinimum(1);
+		ui.sld_areaOfPart->setMinimum(10);
 	}
 
 	ui.sld_areaOfPart->setMinimumPosition(0);
@@ -723,10 +723,6 @@ bool ApplicationGUI::tryDrawNextConvexPartitionMesh() {
 	test2 = conexPartitionsMeshes[currentConexPartitionsMeshe]->convertToString();
 	auto data = conexPartitionsMeshes[currentConexPartitionsMeshe]->convertToPolygonData();
 	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-
-	/*auto leftTop = ui.drar_partitionToConvex_current->LogicToPixelCoords({ 0, 10 }, true);
-	auto rightBottom = ui.drar_partitionToConvex_current->LogicToPixelCoords({ 10, 0 }, true);
-	ui.drar_partitionToConvex_current->drawText(QString::number(currentMesh), leftTop, rightBottom, true, Qt::black, QFont("Arial"), Qt::AlignCenter & Qt::AlignHCenter);*/
 }
 
 bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
@@ -737,10 +733,6 @@ bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
 	test2 = conexPartitionsMeshes[currentConexPartitionsMeshe]->convertToString();
 	auto data = conexPartitionsMeshes[currentConexPartitionsMeshe]->convertToPolygonData();
 	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-
-	/*auto leftTop = ui.drar_partitionToConvex_current->LogicToPixelCoords({ 0, 10 }, true);
-	auto rightBottom = ui.drar_partitionToConvex_current->LogicToPixelCoords({ 10, 0 }, true);
-	ui.drar_partitionToConvex_current->drawText(QString::number(currentMesh), leftTop, rightBottom, true, Qt::black, QFont("Arial"), Qt::AlignCenter & Qt::AlignHCenter);*/
 }
 
 bool ApplicationGUI::tryDrawNextPartPartition() {
@@ -782,12 +774,16 @@ std::vector<int> ApplicationGUI::getConcavePoints() {
 
 void ApplicationGUI::btn_doAlgo(bool checked)
 {
+	ui.progressBar->setVisible(true);
+	ui.progressBar->setValue(0);
+
 	ui.btn_convexPartitionStages->setVisible(true);
 
 	if (anglePoints.first == nullptr || anglePoints.second == nullptr)
 		return;
 
 	auto points = getConcavePoints();
+	ui.progressBar->setValue(4);
 
 	if (points.size() > 0) {
 		ui.btn_allConcavePartitions->setVisible(true);
@@ -797,6 +793,7 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 
 	Rotation r = Rotation(ui.spin_meshAngle->value(), RotationDirection::Right);
 	r.tryRotateFigure(&data->vertex_x, &data->vertex_y);
+	ui.progressBar->setValue(7);
 
 	drawPolygonMesh(ui.drar_mainStages_rotated, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
 
@@ -807,7 +804,9 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	auto start = std::chrono::steady_clock::now();
 
 	auto meshesRef = *m.splitToConvexPolygons(points);
-	optimal = Mesh::getOptimalMesh(&meshesRef);
+	ui.progressBar->setValue(17);
+	optimal = Mesh::getOptimalMeshWithMaxSquareForSplit(&meshesRef, (double)ui.sld_areaOfPart->minimumValue() / SLD_SCALE, (double)ui.sld_areaOfPart->maximumValue() / SLD_SCALE);
+	ui.progressBar->setValue(20);
 
 	auto end = std::chrono::steady_clock::now();
 
@@ -848,33 +847,59 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 void ApplicationGUI::test(Rotation r) {
 	partPartitions.clear();
 	auto meshes = std::vector<Mesh*>();
+	auto nonSplittedMeshes = std::vector<Mesh*>();
+
+	double minS = (double)ui.sld_areaOfPart->minimumValue() / SLD_SCALE;
+	double maxS = (double)ui.sld_areaOfPart->maximumValue() / SLD_SCALE;
+
+	auto progressBarStep = (int)floor(80.0 / optimal->F.size());
 
 	for (auto face : optimal->F) {
-		auto partArea = face->area / 5;
-		if (partArea < 0.1)
-		{
+		auto mesh = Mesh::createFromFace(face);
+
+		if (Mesh::canBeSplittedToEqualSquareParts(face, minS, maxS) == false) {
+			nonSplittedMeshes.push_back(mesh);
 			continue;
 		}
 
-		auto mesh = Mesh::createFromFace(face);
 		auto stage1 = mesh->convertToPolygonData();
-		mesh->splitByVerticalGrid();
-		auto stage2 = mesh->convertToPolygonData();
-		mesh->splitFaces(partArea);
-		auto stage3 = mesh->convertToPolygonData();
 
-		auto perims = mesh->getInternalHorizontalPerimeters();
-		auto optimal = mesh->getOptimalCombinationForInternalPerimeter(perims);
+		auto partArea = Mesh::getPartAreaToSplitMeshTEST(face, minS, maxS);
 
-		mesh->splitMeshByMask(optimal.second);
-		auto stage4 = mesh->convertToPolygonData();
+		if (abs(partArea - face->area) < EPS) {
+			partPartitions.push_back({ stage1, PolygonData(), PolygonData(), PolygonData() });
+		}
+		else {
+			mesh->splitByVerticalGrid();
+			auto stage2 = mesh->convertToPolygonData();
+
+			mesh->splitFaces(partArea);
+			auto stage3 = mesh->convertToPolygonData();
+
+			auto perims = mesh->getInternalHorizontalPerimeters();
+			auto optimal = mesh->getOptimalCombinationForInternalPerimeter(perims);
+
+			mesh->splitMeshByMask(optimal.second);
+			auto stage4 = mesh->convertToPolygonData();
+
+			partPartitions.push_back({ stage1, stage2, stage3, stage4 });
+
+			ui.progressBar->setValue(ui.progressBar->value() + progressBarStep);
+		}
+
 		meshes.push_back(mesh);
-
-		partPartitions.push_back({ stage1, stage2, stage3, stage4 });
 	}
 
 	ui.drar_mainStages_optimal->clearDrawArea();
 	ui.polygonDrawingArea->clearDrawArea();
+
+	for (auto mesh : nonSplittedMeshes) {
+		auto data = mesh->convertToPolygonData();
+		drawPolygonMesh(ui.drar_mainStages_optimal, 2, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
+
+		r.tryRrotateTheFigureBack(&data.vertex_x, &data.vertex_y);
+		drawPolygonMesh(ui.polygonDrawingArea, 0, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
+	}
 
 	for (auto mesh : meshes) {
 		auto data = mesh->convertToPolygonData();
@@ -890,9 +915,12 @@ void ApplicationGUI::test(Rotation r) {
 		ui.polygonDrawingArea->drawEllipse(pixel, 4, false, Qt::black);
 	}
 
+	ui.progressBar->setValue(100);
+
 	currentPartPartition = -1;
 	tryDrawNextPartPartition();
 
+	ui.progressBar->setVisible(false);
 }
 
 void ApplicationGUI::btn_saveMeshAsText(bool checked) {

@@ -5,6 +5,7 @@
 #include "ui_ApplicationGUI.h"
 #include <QLabel>
 #include <QPushButton>
+#include <QProgressBar>
 #include <QFileDialog>
 #include <QCheckBox>
 #include <QDir>
@@ -70,9 +71,7 @@ private:
 
 	PolygonData* convertPolygonToPolygonData();
 
-	//TO DO: Delete
 	void convertToSplittedMesh();
-	///
 
 	void drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean = true);
 	void drawColoredPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean = true, bool isColored = true);
@@ -82,7 +81,6 @@ private:
 
 	void setSliderLabelsPosition();
 
-	//////////////////////////////
 	std::string polygonDrawingAreaMesh;
 	std::string test1;
 	std::string test2;
@@ -109,12 +107,9 @@ private:
 	void clearAllAlgoDrawingAreas();
 	std::vector<int> getConcavePoints();
 
-	//////////
 	Mesh* optimal;
 	void test(Rotation r);
 
 Q_SIGNALS:
 	void drawingAreaSelected(DrawingArea* selectedDrawingArea);
-
-	/////////////////////////////
 };
