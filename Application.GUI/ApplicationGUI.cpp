@@ -46,11 +46,8 @@ void ApplicationGUI::initializeControls()
 	ui.drar_mainStages_optimal->setGridVisibility(true);
 	ui.drar_mainStages_optimal->clearDrawArea();
 
-	connect(ui.btn_saveMeshAsText, &QPushButton::clicked, this, &ApplicationGUI::btn_saveMeshAsText);
 	connect(ui.btn_uploadMeshFromText, &QPushButton::clicked, this, &ApplicationGUI::btn_uploadMeshFromText);
-	connect(ui.btn_saveImages, &QPushButton::clicked, this, &ApplicationGUI::btn_saveAsImage);
 	connect(ui.btn_drawPoly, &QPushButton::clicked, this, &ApplicationGUI::btn_drawPoly);
-	connect(ui.btn_doAlgo, &QPushButton::clicked, this, &ApplicationGUI::btn_doAlgo);
 	////////////////////////////////
 	mouseCoordinates = new QLabel(this);
 	mouseCoordinates->setStyleSheet("QLabel { background-color : white;}");
@@ -92,7 +89,6 @@ void ApplicationGUI::initializeControls()
 
 #pragma region Mesh properties
 	ui.meshAngleDrawingArea->setGridVisibility(false);
-	connect(ui.btn_apply_angle, &QPushButton::clicked, this, &ApplicationGUI::btn_apply_angle_clicked);
 	connect(ui.btn_reset_angle, &QPushButton::clicked, this, &ApplicationGUI::btn_reset_angle_clicked);
 	ui.meshAngleDrawingArea->setX();
 	ui.meshAngleDrawingArea->setY();
@@ -212,7 +208,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			sliderRangeChanged();
 
 			ui.spin_meshAngle->setEnabled(false);
-			ui.btn_apply_angle->setEnabled(false);
 			ui.btn_reset_angle->setEnabled(false);
 
 			polygon = new a::Polygon(ui.spin_numOfSides->value());
@@ -234,7 +229,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			sliderRangeChanged();
 
 			ui.spin_meshAngle->setEnabled(false);
-			ui.btn_apply_angle->setEnabled(false);
 			ui.btn_reset_angle->setEnabled(false);
 			ui.meshAngleDrawingArea->clearDrawArea();
 
@@ -259,7 +253,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			sliderRangeChanged();
 
 			ui.spin_meshAngle->setEnabled(true);
-			ui.btn_apply_angle->setEnabled(true);
 			ui.btn_reset_angle->setEnabled(false);
 			anglePoints = std::make_pair(nullptr, nullptr);
 			ui.meshAngleDrawingArea->clearDrawArea();
@@ -276,7 +269,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.spin_numOfSides->setEnabled(false);
 
 			ui.spin_meshAngle->setEnabled(false);
-			ui.btn_apply_angle->setEnabled(false);
 			ui.btn_reset_angle->setEnabled(true);
 
 			isModeToSelectDrawingArea = false;
@@ -289,7 +281,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.spin_numOfSides->setEnabled(false);
 
 			ui.spin_meshAngle->setEnabled(true);
-			ui.btn_apply_angle->setEnabled(true);
 			ui.btn_reset_angle->setEnabled(false);
 			anglePoints = std::make_pair(nullptr, nullptr);
 			ui.meshAngleDrawingArea->clearDrawArea();
@@ -522,26 +513,6 @@ void ApplicationGUI::btn_reset_clicked(bool checked)
 	setActiveGroupBox("polygonProperties", false);
 }
 
-void ApplicationGUI::btn_apply_angle_clicked(bool checked)
-{
-	/*auto points = Rotation::findPointsOfSegmentByAngle(ui.spin_meshAngle->value(), ui.meshAngleDrawingArea->width(), ui.meshAngleDrawingArea->height());
-	anglePoints = { nullptr, nullptr };
-
-	int x1, x2, y1, y2, x, y;
-	x = ui.meshAngleDrawingArea->x();
-	y = ui.meshAngleDrawingArea->y();
-	x1 = points.first->x + x;
-	y1 = points.first->y + y;
-	x2 = points.second->x + x;
-	y2 = points.second->y + y;
-	addPointToAngle(x1, y1);
-	addPointToAngle(x2, y2);*/
-	/*auto p = ui.meshAngleDrawingArea->LogicToPixelCoords(QPointF(points.first->x, points.first->y), true);
-	addPointToAngle(p.x(), p.y());
-	p = ui.meshAngleDrawingArea->LogicToPixelCoords(QPointF(points.second->x, points.second->y), true);
-	addPointToAngle(p.x(), p.y());*/
-}
-
 void ApplicationGUI::btn_reset_angle_clicked(bool checked)
 {
 	setActiveGroupBox("meshProperties", false);
@@ -636,11 +607,8 @@ void ApplicationGUI::mousePressEvent(QMouseEvent* event)
 			if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
 				addPointToPolygon(point.x(), point.y());
 			}
-			else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y())) {
+			else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y()) && ui.tabWidget->currentIndex() == 0) {
 				addPointToAngle(point.x(), point.y());
-			}
-			else if (ui.drar_mainStages_rotated->isPointInBounds(point.x(), point.y())) {
-				ui.drar_mainStages_rotated->drawEllipse(point, 10, false);
 			}
 		}
 	}
@@ -870,6 +838,9 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	ui.lbl_info_nonDividedArea_optimal->setText(QString::number(optimalCharacteristics->getAreaOfNotSplittedParts()));
 	ui.lbl_info_notDividedPercent_optimal->setText(QString::number(optimalCharacteristics->getPercentageOfNotSplittedParts()) + "%");
 	ui.lbl_info_optimisationFuncValue_optimal->setText(QString::number(optimalCharacteristics->getOptimizationFuncValue()));
+	ui.lbl_info_nonDividedArea_optimal_2->setText(QString::number(optimalCharacteristics->getAreaOfNotSplittedParts()));
+	ui.lbl_info_notDividedPercent_optimal_2->setText(QString::number(optimalCharacteristics->getPercentageOfNotSplittedParts()) + "%");
+	ui.lbl_info_optimisationFuncValue_optimal_2->setText(QString::number(optimalCharacteristics->getOptimizationFuncValue()));
 	tryDrawNextConvexPartitionMesh();
 	/////////////
 
@@ -1094,22 +1065,14 @@ void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawin
 
 		controlsStatesBeforeSelectingMode.push_back(ui.spin_meshAngle->isEnabled());
 		ui.spin_meshAngle->setEnabled(false);
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_apply_angle->isEnabled());
-		ui.btn_apply_angle->setEnabled(false);
 		controlsStatesBeforeSelectingMode.push_back(ui.btn_reset_angle->isEnabled());
 		ui.btn_reset_angle->setEnabled(false);
 
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_saveImages->isEnabled());
-		ui.btn_saveImages->setEnabled(false);
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_saveMeshAsText->isEnabled());
-		ui.btn_saveMeshAsText->setEnabled(false);
 		controlsStatesBeforeSelectingMode.push_back(ui.btn_uploadMeshFromText->isEnabled());
 		ui.btn_uploadMeshFromText->setEnabled(false);
 
 		controlsStatesBeforeSelectingMode.push_back(ui.btn_drawPoly->isEnabled());
 		ui.btn_drawPoly->setEnabled(false);
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_doAlgo->isEnabled());
-		ui.btn_doAlgo->setEnabled(false);
 
 		controlsStatesBeforeSelectingMode.push_back(ui.sld_areaOfPart->isEnabled());
 		ui.sld_areaOfPart->setEnabled(false);
@@ -1129,15 +1092,11 @@ void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawin
 		ui.spin_numOfSides->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
 
 		ui.spin_meshAngle->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-		ui.btn_apply_angle->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
 		ui.btn_reset_angle->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
 
-		ui.btn_saveImages->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-		ui.btn_saveMeshAsText->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
 		ui.btn_uploadMeshFromText->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
 
 		ui.btn_drawPoly->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-		ui.btn_doAlgo->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
 
 		ui.sld_areaOfPart->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
 

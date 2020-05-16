@@ -35,7 +35,6 @@ protected:
 	void mousePressEvent(QMouseEvent* event) override;
 	void btn_apply_clicked(bool checked);
 	void btn_reset_clicked(bool checked);
-	void btn_apply_angle_clicked(bool checked);
 	void btn_reset_angle_clicked(bool checked);
 	void sliderRangeChanged();
 	void areaOfPartRangeChanged(int min, int max);
