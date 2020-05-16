@@ -156,7 +156,7 @@ public:
 	std::vector<int> findConcavePoints();
 	std::vector<Mesh*>* splitToConvexPolygons(std::vector<int> concavePoints);
 	static Mesh* getOptimalMesh(std::vector<Mesh*>* meshes);
-	static Mesh* getOptimalMeshWithMaxSquareForSplit(std::vector<Mesh*>* meshes, double minS, double maxS);
+	static int getOptimalNumOfMeshWithMaxSquareForSplit(std::vector<Mesh*>* meshes, double minS, double maxS, std::vector<ConvexPartitionCharacteristics*>* meshCharacteristics);
 	static bool canBeSplittedToEqualSquareParts(Face* face, double minS, double maxS);
 	static double getPartAreaToSplitMeshTEST(Face* face, double minS, double maxS);
 	static Mesh* createFromFace(Face* face);

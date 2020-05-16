@@ -92,15 +92,18 @@ private:
 	std::vector<bool> controlsStatesBeforeSelectingMode;
 	bool isHintForSelectDrawingAreaShowned;
 
-	std::vector<Mesh*> conexPartitionsMeshes;
+	std::vector<std::pair<Mesh*, ConvexPartitionCharacteristics*>> conexPartitionsMeshes;
 	int currentConexPartitionsMeshe;
 	bool tryDrawNextConvexPartitionMesh();
 	bool tryDrawPrevConvexPartitionMesh();
+	void drawCurPartConvexPartitionMesh();
 
 	std::vector<std::tuple<PolygonData, PolygonData, PolygonData, PolygonData>> partPartitions;
 	int currentPartPartition;
 	bool tryDrawNextPartPartition();
 	bool tryDrawPrevPartPartition();
+	void drawCurPartPartition();
+	void setPartPartitionControlsVisibility(bool isNotDividedPart);
 
 	void setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea);
 
@@ -108,6 +111,7 @@ private:
 	std::vector<int> getConcavePoints();
 
 	Mesh* optimal;
+	ConvexPartitionCharacteristics* optimalCharacteristics;
 	void test(Rotation r);
 
 Q_SIGNALS:

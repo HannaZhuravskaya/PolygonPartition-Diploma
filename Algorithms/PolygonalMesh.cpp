@@ -1614,15 +1614,18 @@ Mesh* Mesh::getOptimalMesh(std::vector<Mesh*>* meshes) {
 	return optimal;
 }
 
-Mesh* Mesh::getOptimalMeshWithMaxSquareForSplit(std::vector<Mesh*>* meshes, double minS, double maxS) {
+int Mesh::getOptimalNumOfMeshWithMaxSquareForSplit(std::vector<Mesh*>* meshes, double minS, double maxS, std::vector<ConvexPartitionCharacteristics*>* meshCharacteristics) {
 	double minMeshS = DBL_MAX;
 	double minNonSplittedSquare = DBL_MAX;
-	Mesh* optimal = nullptr;
+	int optimal = -1;
 
-	for (auto mesh : *meshes) {
+	for (int i = 0; i < meshes->size(); ++i) {
 		double func = 0.0;
 		double nonSplitted = 0.0;
-		for (auto face : mesh->F) {
+		double allArea = 0.0;
+		for (auto face : (*meshes)[i]->F) {
+			allArea += face->area;
+
 			if (!Mesh::canBeSplittedToEqualSquareParts(face, minS, maxS)) {
 				nonSplitted += face->area;
 			}
@@ -1633,14 +1636,16 @@ Mesh* Mesh::getOptimalMeshWithMaxSquareForSplit(std::vector<Mesh*>* meshes, doub
 		if (minNonSplittedSquare > nonSplitted) {
 			minNonSplittedSquare = nonSplitted;
 			minMeshS = func;
-			optimal = mesh;
+			optimal = i;
 		}
 		else if (abs(minNonSplittedSquare - nonSplitted) < EPS) {
 			if (minMeshS > func) {
 				minMeshS = func;
-				optimal = mesh;
+				optimal = i;
 			}
 		}
+
+		meshCharacteristics->push_back(new ConvexPartitionCharacteristics(nonSplitted, nonSplitted / allArea * 100, func));
 	}
 
 	return optimal;
@@ -1687,7 +1692,7 @@ double Mesh::getPartAreaToSplitMeshTEST(Face* face, double minS, double maxS) {
 		num = maxNumToSplit;
 	}
 
-	//return face->area / num;
+
 	return face->area / minNumOfParts;
 }
 

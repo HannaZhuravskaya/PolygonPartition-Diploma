@@ -68,7 +68,22 @@ public:
 	bool tryRotateThePointBack(Algorithms::Point* p);
 };
 
+class ALGORITHMS_API ConvexPartitionCharacteristics 
+{
+private:
+	double areaOfNotSplittedParts;
+	double percentageOfNotSplittedParts;
+	double optimizationFuncValue;
 
+	double getDoubleWithPrecision(double number, int prec);
 
+public:
+	ConvexPartitionCharacteristics();
+	ConvexPartitionCharacteristics(double areaOfNotSplittedParts, double percentageOfNotSplittedParts, double optimizationFuncValue);
+
+	double getAreaOfNotSplittedParts(int prec = 2);
+	double getPercentageOfNotSplittedParts(int prec = 2);
+	double getOptimizationFuncValue(int prec = 2);
+};
 
 #include "pch.h"

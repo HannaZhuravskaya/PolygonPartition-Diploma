@@ -28,7 +28,7 @@ void ApplicationGUI::initializeControls()
 
 	////////////////////////////////
 	currentConexPartitionsMeshe = -1;
-	conexPartitionsMeshes = std::vector<Mesh*>();
+	conexPartitionsMeshes = std::vector<std::pair<Mesh*,ConvexPartitionCharacteristics*>>();
 	//3,3
 	ui.drar_mainStages_rotated->setScale(3, 3);
 	ui.drar_mainStages_rotated->setGridVisibility(true);
@@ -78,7 +78,16 @@ void ApplicationGUI::initializeControls()
 			setSliderLabelsPosition();
 		});
 
-	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this, [=]() { setActiveGroupBox("meshProperties", true); btn_doAlgo(true); });
+	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this,
+		[=]() {
+			if (anglePoints.first != nullptr && anglePoints.second != nullptr) {
+				setActiveGroupBox("meshProperties", true);
+				btn_doAlgo(true);
+			}
+			else {
+				setActiveGroupBox("meshProperties", false);
+			}
+		});
 #pragma endregion
 
 #pragma region Mesh properties
@@ -720,9 +729,8 @@ bool ApplicationGUI::tryDrawNextConvexPartitionMesh() {
 		return false;
 
 	currentConexPartitionsMeshe++;
-	test2 = conexPartitionsMeshes[currentConexPartitionsMeshe]->convertToString();
-	auto data = conexPartitionsMeshes[currentConexPartitionsMeshe]->convertToPolygonData();
-	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+
+	drawCurPartConvexPartitionMesh();
 }
 
 bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
@@ -730,9 +738,20 @@ bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
 		return false;
 
 	currentConexPartitionsMeshe--;
-	test2 = conexPartitionsMeshes[currentConexPartitionsMeshe]->convertToString();
-	auto data = conexPartitionsMeshes[currentConexPartitionsMeshe]->convertToPolygonData();
+
+	drawCurPartConvexPartitionMesh();
+}
+
+void ApplicationGUI::drawCurPartConvexPartitionMesh() {
+	auto curMesh = conexPartitionsMeshes[currentConexPartitionsMeshe].first;
+	auto curCharacteristics = conexPartitionsMeshes[currentConexPartitionsMeshe].second;
+	
+	auto data = curMesh->convertToPolygonData();
 	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+
+	ui.lbl_info_nonDividedArea->setText(QString::number(curCharacteristics->getAreaOfNotSplittedParts()));
+	ui.lbl_info_notDividedPercent->setText(QString::number(curCharacteristics->getPercentageOfNotSplittedParts()) + "%");
+	ui.lbl_info_optimisationFuncValue->setText(QString::number(curCharacteristics->getOptimizationFuncValue()));
 }
 
 bool ApplicationGUI::tryDrawNextPartPartition() {
@@ -741,12 +760,7 @@ bool ApplicationGUI::tryDrawNextPartPartition() {
 
 	currentPartPartition++;
 
-	auto cur = partPartitions[currentPartPartition];
-
-	drawPolygonData(ui.drar_convexPart_part, 2, std::get<0>(cur));
-	drawPolygonData(ui.drar_convexPart_splittedVert, 2, std::get<1>(cur));
-	drawPolygonData(ui.drar_convexPart_splittedFaces, 2, std::get<2>(cur));
-	drawPolygonData(ui.drar_convexPart_optimal, 2, std::get<3>(cur));
+	drawCurPartPartition();
 }
 
 bool ApplicationGUI::tryDrawPrevPartPartition() {
@@ -755,12 +769,35 @@ bool ApplicationGUI::tryDrawPrevPartPartition() {
 
 	currentPartPartition--;
 
+	drawCurPartPartition();
+}
+
+void ApplicationGUI::drawCurPartPartition() {
 	auto cur = partPartitions[currentPartPartition];
 
 	drawPolygonData(ui.drar_convexPart_part, 2, std::get<0>(cur));
-	drawPolygonData(ui.drar_convexPart_splittedVert, 2, std::get<1>(cur));
-	drawPolygonData(ui.drar_convexPart_splittedFaces, 2, std::get<2>(cur));
-	drawPolygonData(ui.drar_convexPart_optimal, 2, std::get<3>(cur));
+
+	if (std::get<1>(cur).vertex_x.size() == 0) {
+		setPartPartitionControlsVisibility(true);
+	}
+	else {
+		setPartPartitionControlsVisibility(false);
+		ui.lbl_info_numOfSplittedParts->setText("Number of splitted parts: " + QString::number(std::get<3>(cur).getNumOfFaces()));
+		drawPolygonData(ui.drar_convexPart_splittedVert, 2, std::get<1>(cur));
+		drawPolygonData(ui.drar_convexPart_splittedFaces, 2, std::get<2>(cur));
+		drawPolygonData(ui.drar_convexPart_optimal, 2, std::get<3>(cur));
+	}
+}
+
+void ApplicationGUI::setPartPartitionControlsVisibility(bool isNotDividedPart) {
+	ui.lbl_info_notDividedPart->setVisible(isNotDividedPart);
+	ui.lbl_info_dividedPart_1->setVisible(!isNotDividedPart);
+	ui.lbl_info_dividedPart_2->setVisible(!isNotDividedPart);
+	ui.lbl_info_dividedPart_3->setVisible(!isNotDividedPart);
+	ui.drar_convexPart_splittedVert->setVisible(!isNotDividedPart);
+	ui.drar_convexPart_splittedFaces->setVisible(!isNotDividedPart);
+	ui.drar_convexPart_optimal->setVisible(!isNotDividedPart);
+	ui.lbl_info_numOfSplittedParts->setVisible(!isNotDividedPart);
 }
 
 std::vector<int> ApplicationGUI::getConcavePoints() {
@@ -774,13 +811,13 @@ std::vector<int> ApplicationGUI::getConcavePoints() {
 
 void ApplicationGUI::btn_doAlgo(bool checked)
 {
+	if (anglePoints.first == nullptr || anglePoints.second == nullptr)
+		return;
+
 	ui.progressBar->setVisible(true);
 	ui.progressBar->setValue(0);
 
 	ui.btn_convexPartitionStages->setVisible(true);
-
-	if (anglePoints.first == nullptr || anglePoints.second == nullptr)
-		return;
 
 	auto points = getConcavePoints();
 	ui.progressBar->setValue(4);
@@ -805,7 +842,10 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 
 	auto meshesRef = *m.splitToConvexPolygons(points);
 	ui.progressBar->setValue(17);
-	optimal = Mesh::getOptimalMeshWithMaxSquareForSplit(&meshesRef, (double)ui.sld_areaOfPart->minimumValue() / SLD_SCALE, (double)ui.sld_areaOfPart->maximumValue() / SLD_SCALE);
+	auto meshesRefCharacteristics = std::vector<ConvexPartitionCharacteristics*>();
+	auto optimalIndex = Mesh::getOptimalNumOfMeshWithMaxSquareForSplit(&meshesRef, (double)ui.sld_areaOfPart->minimumValue() / SLD_SCALE, (double)ui.sld_areaOfPart->maximumValue() / SLD_SCALE, &meshesRefCharacteristics);
+	optimal = meshesRef[optimalIndex];
+	optimalCharacteristics = meshesRefCharacteristics[optimalIndex];
 	ui.progressBar->setValue(20);
 
 	auto end = std::chrono::steady_clock::now();
@@ -821,11 +861,15 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 
 	//////////////
 	conexPartitionsMeshes.clear();
-	for (auto i : meshesRef) {
-		conexPartitionsMeshes.push_back(i);
+	for (int i = 0; i < meshesRef.size(); ++i) {
+		conexPartitionsMeshes.push_back({ meshesRef[i], meshesRefCharacteristics[i]});
 	}
 
 	currentConexPartitionsMeshe = -1;
+	ui.lbl_partitionToConvexParts_optimal->setText("Optimal partition - " + QString::number(optimalIndex + 1));
+	ui.lbl_info_nonDividedArea_optimal->setText(QString::number(optimalCharacteristics->getAreaOfNotSplittedParts()));
+	ui.lbl_info_notDividedPercent_optimal->setText(QString::number(optimalCharacteristics->getPercentageOfNotSplittedParts()) + "%");
+	ui.lbl_info_optimisationFuncValue_optimal->setText(QString::number(optimalCharacteristics->getOptimizationFuncValue()));
 	tryDrawNextConvexPartitionMesh();
 	/////////////
 
