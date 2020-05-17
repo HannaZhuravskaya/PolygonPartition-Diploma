@@ -1068,6 +1068,18 @@ void ApplicationGUI::saveMainStepsResults(QString folder) {
 	out.close();
 #pragma endregion
 
+#pragma results as text
+	auto resultsAsText = QString();
+	resultsAsText.append("Algorithm results\n");
+	resultsAsText.append("Unused area: "+ ui.lbl_info_nonDividedArea_optimal->text() + "\n");
+	resultsAsText.append("Percentage of unused area: " + ui.lbl_info_notDividedPercent_optimal->text() + "\n");
+	resultsAsText.append("Optimization function value: " + ui.lbl_info_optimisationFuncValue_optimal->text() + "\n");
+
+	std::ofstream out2(folder.toStdString() + "/5. results.txt");
+	out2 << resultsAsText.toStdString();
+	out2.close();
+#pragma endregion
+
 	ui.progressBar->setValue(ui.progressBar->value() + progressBarStep);
 }
 
