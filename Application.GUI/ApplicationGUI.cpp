@@ -857,6 +857,10 @@ void ApplicationGUI::test(Rotation r) {
 	ui.drar_mainStages_optimal->clearDrawArea();
 	ui.polygonDrawingArea->clearDrawArea();
 
+	if (partPartitions.size() == 0) {
+		ui.btn_convexPartitionStages->setVisible(false);
+	}
+
 	for (auto mesh : nonSplittedMeshes) {
 		auto data = mesh->convertToPolygonData();
 		drawPolygonMesh(ui.drar_mainStages_optimal, 2, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
@@ -957,16 +961,6 @@ void ApplicationGUI::saveResults()
 	int pgb_partitionIntoConvexParts = ui.chb_isSave_partitionIntoConvexParts->isChecked() ? 90 : 0;
 	int pgb_mainStep = (100 - pgb_partitionIntoConvexParts) / 2;
 	int pgb_partPartition = pgb_mainStep;
-	int pgb_partitionIntoConvexParts_Freq;
-
-	if (pgb_partitionIntoConvexParts >= convexPartitionsMeshes.size() && pgb_partitionIntoConvexParts != 0) {
-		pgb_partitionIntoConvexParts = 80 / convexPartitionsMeshes.size();
-		pgb_partitionIntoConvexParts_Freq = 1;
-	}
-	else if(pgb_partitionIntoConvexParts < convexPartitionsMeshes.size() && pgb_partitionIntoConvexParts != 0){
-		pgb_partitionIntoConvexParts = 1;
-		pgb_partitionIntoConvexParts_Freq = convexPartitionsMeshes.size()  / 80;
-	}
 
 	ui.progressBar->setValue(0);
 	ui.progressBar->setVisible(true);
@@ -978,15 +972,24 @@ void ApplicationGUI::saveResults()
 		ui.progressBar->setVisible(true);
 	}
 
-	if (ui.chb_isSave_partitionIntoConvexParts->isChecked()) {
+	if (ui.chb_isSave_partitionIntoConvexParts->isChecked() && convexPartitionsMeshes.size() > 0) {
+
+		if (pgb_partitionIntoConvexParts >= convexPartitionsMeshes.size() && pgb_partitionIntoConvexParts != 0) {
+			pgb_partitionIntoConvexParts = 80 / convexPartitionsMeshes.size();
+			progressBarStepFreq = 1;
+		}
+		else if (pgb_partitionIntoConvexParts < convexPartitionsMeshes.size() && pgb_partitionIntoConvexParts != 0) {
+			pgb_partitionIntoConvexParts = 1;
+			progressBarStepFreq = convexPartitionsMeshes.size() / 80;
+		}
+
 		progressBarStep = pgb_partitionIntoConvexParts;
-		progressBarStepFreq = pgb_partitionIntoConvexParts_Freq;
 		subDir = directory + "/Partition into convex parts";
 		QDir().mkdir(subDir);
 		savePartitionIntoConvexPartsResults(subDir);
 	}
 
-	if (ui.chb_isSave_convexPartPartition->isChecked()) {
+	if (ui.chb_isSave_convexPartPartition->isChecked() && partPartitions.size() > 0) {
 		progressBarStep = pgb_partPartition;
 		subDir = directory + "/Convex part partitions";
 		QDir().mkdir(subDir);
