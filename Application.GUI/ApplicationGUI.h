@@ -109,6 +109,10 @@ private:
 	int progressBarStep;
 	int progressBarStepFreq;
 
+	double minArea;
+	double maxArea;
+	bool isSliderAreaInPercents;
+
 	std::tuple<bool, bool, bool> bottomGroupBoxesVisibility;
 	std::tuple<int, int> currentPartitionsValues;
 

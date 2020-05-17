@@ -59,16 +59,26 @@ void ApplicationGUI::initializeControls()
 #pragma region Area properties
 	connect(ui.sld_areaOfPart, &RangeSlider::minimumPositionChanged, this,
 		[=](int min) {
-			ui.sld_minPosLabel->setText(QString::number(min / SLD_SCALE));
-			ui.lbl_minAreaOfPart->setText(QString::number(min / SLD_SCALE));
+			minArea = isSliderAreaInPercents ? (double)((int)(polygonArea * min)) / 100 : min / SLD_SCALE;
+			ui.sld_minPosLabel->setText(isSliderAreaInPercents ? QString::number(min) + "%" : QString::number(minArea));
+			ui.lbl_minAreaOfPart->setText(QString::number(minArea));
 			setSliderLabelsPosition();
 		});
 
 	connect(ui.sld_areaOfPart, &RangeSlider::maximumPositionChanged, this,
 		[=](int max) {
-			ui.sld_maxPosLabel->setText(QString::number(max / SLD_SCALE));
-			ui.lbl_maxAreaOfPart->setText(QString::number(max / SLD_SCALE));
-			setSliderLabelsPosition();
+			if (isSliderAreaInPercents) {
+				maxArea = (double)((int)(polygonArea *  max))  / 100;
+				ui.sld_maxPosLabel->setText(QString::number(max) + "%");
+				ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
+				setSliderLabelsPosition();
+			}
+			else {
+				maxArea = max / SLD_SCALE;
+				ui.sld_maxPosLabel->setText(QString::number(maxArea));
+				ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
+				setSliderLabelsPosition();
+			}
 		});
 
 	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this,
@@ -81,6 +91,42 @@ void ApplicationGUI::initializeControls()
 				setActiveGroupBox("meshProperties", false);
 			}
 		});
+
+	connect(ui.chb_isAreaRestrictionsInPercent, &QCheckBox::stateChanged, this,
+		[=](int state) {
+			isSliderAreaInPercents = ui.chb_isAreaRestrictionsInPercent->isChecked();
+
+			if (ui.sld_areaOfPart->maximumPosition() == 0) {
+				ui.sld_areaOfPart->setMaximum(0);
+				ui.sld_areaOfPart->setMinimum(0);
+			}
+			else {
+				if (isSliderAreaInPercents) {
+
+					ui.sld_areaOfPart->setMaximum(50);
+					ui.sld_areaOfPart->setMinimum(0);
+				}
+				else {
+					ui.sld_areaOfPart->setMaximum(polygonArea * SLD_SCALE / 2);
+					ui.sld_areaOfPart->setMinimum(0);
+				}
+			}
+
+			sliderRangeChanged();
+
+			if (ui.sld_areaOfPart->maximumPosition() != 0) {
+				if (anglePoints.first != nullptr && anglePoints.second != nullptr) {
+					setActiveGroupBox("meshProperties", true);
+					btn_doAlgo(true);
+				}
+				else {
+					setActiveGroupBox("meshProperties", false);
+				}
+			}
+		});
+
+	isSliderAreaInPercents = ui.chb_isAreaRestrictionsInPercent->isChecked();
+
 #pragma endregion
 
 #pragma region Mesh properties
@@ -250,7 +296,14 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.spin_numOfSides->setEnabled(false);
 
 			ui.lbl_polygonArea->setText(QString::number(polygonArea));
-			ui.sld_areaOfPart->setMaximum(polygonArea * SLD_SCALE / 2);
+
+			if (isSliderAreaInPercents) {
+				ui.sld_areaOfPart->setMaximum(50);
+			}
+			else {
+				ui.sld_areaOfPart->setMaximum(polygonArea * SLD_SCALE / 2);
+			}
+
 			ui.sld_areaOfPart->setEnabled(true);
 			sliderRangeChanged();
 
@@ -499,6 +552,7 @@ void ApplicationGUI::setSliderLabelsPosition()
 	}
 }
 
+
 void ApplicationGUI::calculatePolygonProperties()
 {
 	bool isSelfIntersected = false;
@@ -534,15 +588,28 @@ void ApplicationGUI::calculatePolygonProperties()
 
 void ApplicationGUI::sliderRangeChanged()
 {
-	if (ui.sld_areaOfPart->maximum() > 0)
-	{
-		ui.sld_areaOfPart->setMinimum(10);
+	if (isSliderAreaInPercents) {
+		if (ui.sld_areaOfPart->maximum() > 0)
+		{
+			ui.sld_areaOfPart->setMinimum(1);
+		}
+
+		ui.sld_areaOfPart->setMinimumPosition(0);
+		ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
+
+		areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
 	}
+	else {
+		if (ui.sld_areaOfPart->maximum() > 0)
+		{
+			ui.sld_areaOfPart->setMinimum(10);
+		}
 
-	ui.sld_areaOfPart->setMinimumPosition(0);
-	ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
+		ui.sld_areaOfPart->setMinimumPosition(0);
+		ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
 
-	areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
+		areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
+	}
 }
 
 void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
@@ -554,10 +621,21 @@ void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
 		ui.lbl_maxAreaOfPart->setText("");
 	}
 	else {
-		ui.sld_minPosLabel->setText(QString::number(min / SLD_SCALE));
-		ui.sld_maxPosLabel->setText(QString::number(max / SLD_SCALE));
-		ui.lbl_minAreaOfPart->setText(QString::number(min / SLD_SCALE));
-		ui.lbl_maxAreaOfPart->setText(QString::number(max / SLD_SCALE));
+		if(isSliderAreaInPercents){
+			minArea = (double)((int)(polygonArea * min)) / 100;
+			maxArea = (double)((int)(polygonArea * max)) / 100;
+			ui.sld_minPosLabel->setText(QString::number(min) + "%");
+			ui.sld_maxPosLabel->setText(QString::number(max) + "%");
+		}
+		else {
+			minArea = min / SLD_SCALE;
+			maxArea = max / SLD_SCALE;
+			ui.sld_minPosLabel->setText(QString::number(minArea));
+			ui.sld_maxPosLabel->setText(QString::number(maxArea));
+		}
+
+		ui.lbl_minAreaOfPart->setText(QString::number(minArea));
+		ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
 		setSliderLabelsPosition();
 	}
 }
@@ -757,7 +835,7 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	auto meshesRef = *m.splitToConvexPolygons(points);
 	ui.progressBar->setValue(17);
 	auto meshesRefCharacteristics = std::vector<ConvexPartitionCharacteristics*>();
-	auto optimalIndex = Mesh::getOptimalNumOfMeshWithMaxSquareForSplit(&meshesRef, (double)ui.sld_areaOfPart->minimumValue() / SLD_SCALE, (double)ui.sld_areaOfPart->maximumValue() / SLD_SCALE, &meshesRefCharacteristics);
+	auto optimalIndex = Mesh::getOptimalNumOfMeshWithMaxSquareForSplit(&meshesRef, minArea, maxArea, &meshesRefCharacteristics);
 	optimal = meshesRef[optimalIndex];
 	optimalCharacteristics = meshesRefCharacteristics[optimalIndex];
 	ui.progressBar->setValue(20);
@@ -813,22 +891,19 @@ void ApplicationGUI::test(Rotation r) {
 	auto meshes = std::vector<Mesh*>();
 	auto nonSplittedMeshes = std::vector<Mesh*>();
 
-	double minS = (double)ui.sld_areaOfPart->minimumValue() / SLD_SCALE;
-	double maxS = (double)ui.sld_areaOfPart->maximumValue() / SLD_SCALE;
-
 	auto progressBarStep = (int)floor(80.0 / optimal->F.size());
 
 	for (auto face : optimal->F) {
 		auto mesh = Mesh::createFromFace(face);
 
-		if (Mesh::canBeSplittedToEqualSquareParts(face, minS, maxS) == false) {
+		if (Mesh::canBeSplittedToEqualSquareParts(face, minArea, maxArea) == false) {
 			nonSplittedMeshes.push_back(mesh);
 			continue;
 		}
 
 		auto stage1 = mesh->convertToPolygonData();
 
-		auto partArea = Mesh::getPartAreaToSplitMeshTEST(face, minS, maxS);
+		auto partArea = Mesh::getPartAreaToSplitMeshTEST(face, minArea, maxArea);
 
 		if (abs(partArea - face->area) < EPS) {
 			partPartitions.push_back({ stage1, PolygonData(), PolygonData(), PolygonData() });
