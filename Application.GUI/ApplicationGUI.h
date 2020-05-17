@@ -33,21 +33,15 @@ public:
 
 protected:
 	void mousePressEvent(QMouseEvent* event) override;
-	void btn_apply_clicked(bool checked);
-	void btn_reset_clicked(bool checked);
-	void btn_reset_angle_clicked(bool checked);
 	void sliderRangeChanged();
 	void areaOfPartRangeChanged(int min, int max);
 	void calculatePolygonProperties();
 
-	void btn_saveAsImage(bool checked);
 	void btn_drawPoly(bool checked);
 	void btn_doAlgo(bool checked);
-	void btn_saveMeshAsText(bool checked);
-	void btn_uploadMeshFromText(bool checked);
 	void saveDrawingAreaAsImage(DrawingArea* drawingAreaOfMesh);
 	void saveMeshAsText(DrawingArea* drawingAreaOfMesh);
-	void uploadMeshFromText(DrawingArea* drawingAreaOfMesh);
+	void uploadMeshFromText();
 
 private:
 	Ui::ApplicationGUIClass ui;
@@ -76,8 +70,6 @@ private:
 	void drawColoredPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean = true, bool isColored = true);
 	void drawPolygonData(DrawingArea* drawingArea, int radiusOfPoints, PolygonData data, bool isNeedToClean = true);
 
-	QColor getNextColor();
-
 	void setSliderLabelsPosition();
 
 	std::string polygonDrawingAreaMesh;
@@ -85,11 +77,6 @@ private:
 	std::string test2;
 	std::string test3;
 	std::string test4;
-
-
-	bool isModeToSelectDrawingArea;
-	std::vector<bool> controlsStatesBeforeSelectingMode;
-	bool isHintForSelectDrawingAreaShowned;
 
 	std::vector<std::pair<Mesh*, ConvexPartitionCharacteristics*>> conexPartitionsMeshes;
 	int currentConexPartitionsMeshe;
@@ -103,8 +90,6 @@ private:
 	bool tryDrawPrevPartPartition();
 	void drawCurPartPartition();
 	void setPartPartitionControlsVisibility(bool isNotDividedPart);
-
-	void setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea);
 
 	void clearAllAlgoDrawingAreas();
 	std::vector<int> getConcavePoints();

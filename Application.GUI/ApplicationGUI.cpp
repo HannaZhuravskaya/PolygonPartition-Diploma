@@ -1,9 +1,5 @@
 #include "ApplicationGUI.h"
 
-QColor ApplicationGUI::getNextColor() {
-	return QColor(rand() % 256, rand() % 256, rand() % 256, 100);
-}
-
 ApplicationGUI::ApplicationGUI(QWidget* parent)
 	: QWidget(parent)
 {
@@ -46,7 +42,7 @@ void ApplicationGUI::initializeControls()
 	ui.drar_mainStages_optimal->setGridVisibility(true);
 	ui.drar_mainStages_optimal->clearDrawArea();
 
-	connect(ui.btn_uploadMeshFromText, &QPushButton::clicked, this, &ApplicationGUI::btn_uploadMeshFromText);
+	connect(ui.btn_uploadMeshFromText, &QPushButton::clicked, this, [=](bool checked) {uploadMeshFromText(); });
 	connect(ui.btn_drawPoly, &QPushButton::clicked, this, &ApplicationGUI::btn_drawPoly);
 	////////////////////////////////
 	mouseCoordinates = new QLabel(this);
@@ -56,8 +52,8 @@ void ApplicationGUI::initializeControls()
 
 #pragma region Polygon properties
 	ui.polygonDrawingArea->setGridVisibility(true);
-	connect(ui.btn_apply, &QPushButton::clicked, this, &ApplicationGUI::btn_apply_clicked);
-	connect(ui.btn_reset, &QPushButton::clicked, this, &ApplicationGUI::btn_reset_clicked);
+	connect(ui.btn_apply, &QPushButton::clicked, this, [=](bool checked) {setActiveGroupBox("polygonProperties", true); });
+	connect(ui.btn_reset, &QPushButton::clicked, this, [=](bool checked) {setActiveGroupBox("polygonProperties", false); });
 #pragma endregion
 
 #pragma region Area properties
@@ -89,7 +85,7 @@ void ApplicationGUI::initializeControls()
 
 #pragma region Mesh properties
 	ui.meshAngleDrawingArea->setGridVisibility(false);
-	connect(ui.btn_reset_angle, &QPushButton::clicked, this, &ApplicationGUI::btn_reset_angle_clicked);
+	connect(ui.btn_reset_angle, &QPushButton::clicked, this, [=](bool checked) {setActiveGroupBox("meshProperties", false); });
 	ui.meshAngleDrawingArea->setX();
 	ui.meshAngleDrawingArea->setY();
 #pragma endregion
@@ -186,8 +182,6 @@ void ApplicationGUI::initializeControls()
 	partPartitions = std::vector<std::tuple<PolygonData, PolygonData, PolygonData, PolygonData>>();
 
 #pragma endregion
-
-	isHintForSelectDrawingAreaShowned = false;
 }
 
 void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
@@ -213,8 +207,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			polygon = new a::Polygon(ui.spin_numOfSides->value());
 			polygonArea = 0;
 			anglePoints = std::make_pair(nullptr, nullptr);
-
-			isModeToSelectDrawingArea = false;
 		}
 		else {
 			activeGroupBox = "polygonProperties";
@@ -235,8 +227,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			polygon = nullptr;
 			ui.polygonDrawingArea->clearDrawArea();
 			anglePoints = std::make_pair(nullptr, nullptr);
-
-			isModeToSelectDrawingArea = false;
 		}
 	}
 	else if (grb_name == "areaProperties") {
@@ -256,8 +246,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_reset_angle->setEnabled(false);
 			anglePoints = std::make_pair(nullptr, nullptr);
 			ui.meshAngleDrawingArea->clearDrawArea();
-
-			isModeToSelectDrawingArea = false;
 		}
 	}
 	else if (grb_name == "meshProperties") {
@@ -270,8 +258,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 
 			ui.spin_meshAngle->setEnabled(false);
 			ui.btn_reset_angle->setEnabled(true);
-
-			isModeToSelectDrawingArea = false;
 		}
 		else {
 			activeGroupBox = "meshProperties";
@@ -287,8 +273,6 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 
 			auto data = convertPolygonToPolygonData();
 			drawPolygonData(ui.polygonDrawingArea, 4, *data);
-
-			isModeToSelectDrawingArea = false;
 		}
 	}
 }
@@ -449,7 +433,7 @@ void ApplicationGUI::drawColoredPolygonMesh(DrawingArea* drawingArea, int radius
 				p.push_back(drawingArea->LogicToPixelCoords(QPointF(x[edges[j]], y[edges[j]]), false));
 			}
 
-			drawingArea->fillPath(p, 1, false, getNextColor());
+			drawingArea->fillPath(p, 1, false, QColor(rand() % 256, rand() % 256, rand() % 256, 100));
 		}
 	}
 
@@ -501,21 +485,6 @@ void ApplicationGUI::setSliderLabelsPosition()
 	else {
 		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 40, lbl_w, lbl_h);
 	}
-}
-
-void ApplicationGUI::btn_apply_clicked(bool checked)
-{
-	setActiveGroupBox("polygonProperties", true);
-}
-
-void ApplicationGUI::btn_reset_clicked(bool checked)
-{
-	setActiveGroupBox("polygonProperties", false);
-}
-
-void ApplicationGUI::btn_reset_angle_clicked(bool checked)
-{
-	setActiveGroupBox("meshProperties", false);
 }
 
 void ApplicationGUI::calculatePolygonProperties()
@@ -584,40 +553,23 @@ void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
 void ApplicationGUI::mousePressEvent(QMouseEvent* event)
 {
 	if (event->button() == Qt::LeftButton) {
-
 		auto point = event->pos();
-		if (isModeToSelectDrawingArea) {
-			if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.polygonDrawingArea);
-			}
-			else if (ui.drar_mainStages_rotated->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.drar_mainStages_rotated);
-			}
-			else if (ui.drar_mainStages_concavePoints->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.drar_mainStages_concavePoints);
-			}
-			else if (ui.drar_mainStages_convexParts->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.drar_mainStages_convexParts);
-			}
-			else if (ui.drar_mainStages_optimal->isPointInBounds(point.x(), point.y())) {
-				emit drawingAreaSelected(ui.drar_mainStages_optimal);
-			}
+
+		if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
+			addPointToPolygon(point.x(), point.y());
 		}
-		else {
-			if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
-				addPointToPolygon(point.x(), point.y());
-			}
-			else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y()) && ui.tabWidget->currentIndex() == 0) {
-				addPointToAngle(point.x(), point.y());
-			}
+		else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y()) && ui.tabWidget->currentIndex() == 0) {
+			addPointToAngle(point.x(), point.y());
 		}
 	}
 }
 
 void ApplicationGUI::btn_drawPoly(bool checked)
 {
-	//FIGURE 1
+	ui.polygonDrawingArea->clearDrawArea();
+
 	polygon = new a::Polygon(10);
+	ui.spin_numOfSides->setValue(polygon->getNumOfSides());
 
 	QPoint p;
 	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 50.0 }, false);
@@ -640,26 +592,6 @@ void ApplicationGUI::btn_drawPoly(bool checked)
 	addPointToPolygon(p.x(), p.y());
 	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 55.0 }, false);
 	addPointToPolygon(p.x(), p.y());
-
-	/*
-	// FIGURE 2
-	polygon = new a::Polygon(7);
-
-	QPoint p;
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 30.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 15.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 11.6667 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 15.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 55.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 52.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 40.0 }, false);
-	addPointToPolygon(p.x(), p.y());*/
 }
 
 PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
@@ -713,7 +645,7 @@ bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
 void ApplicationGUI::drawCurPartConvexPartitionMesh() {
 	auto curMesh = conexPartitionsMeshes[currentConexPartitionsMeshe].first;
 	auto curCharacteristics = conexPartitionsMeshes[currentConexPartitionsMeshe].second;
-	
+
 	auto data = curMesh->convertToPolygonData();
 	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
 
@@ -830,7 +762,7 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	//////////////
 	conexPartitionsMeshes.clear();
 	for (int i = 0; i < meshesRef.size(); ++i) {
-		conexPartitionsMeshes.push_back({ meshesRef[i], meshesRefCharacteristics[i]});
+		conexPartitionsMeshes.push_back({ meshesRef[i], meshesRefCharacteristics[i] });
 	}
 
 	currentConexPartitionsMeshe = -1;
@@ -938,19 +870,7 @@ void ApplicationGUI::test(Rotation r) {
 	ui.progressBar->setVisible(false);
 }
 
-void ApplicationGUI::btn_saveMeshAsText(bool checked) {
-	if (!isHintForSelectDrawingAreaShowned) {
-		isHintForSelectDrawingAreaShowned = true;
-		QMessageBox::information(this, "", "Select the area...");
-	}
-	setControlsDependsOnSelectingMode(true);
-	connect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveMeshAsText);
-}
-
 void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
-	disconnect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveMeshAsText);
-	setControlsDependsOnSelectingMode(false);
-
 	QString file_name = QFileDialog::getSaveFileName(this, "Save Text File", QDir::homePath(), "Text files(*.txt)");
 
 	if (file_name.isEmpty()) {
@@ -986,20 +906,11 @@ void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
 	out.close();
 }
 
-void ApplicationGUI::btn_uploadMeshFromText(bool checked) {
-	if (!isHintForSelectDrawingAreaShowned) {
-		isHintForSelectDrawingAreaShowned = true;
-		QMessageBox::information(this, "", "Select the area...");
-	}
-	setControlsDependsOnSelectingMode(true);
-	connect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::uploadMeshFromText);
-}
-
-void ApplicationGUI::uploadMeshFromText(DrawingArea* drawingAreaOfMesh) {
-	disconnect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::uploadMeshFromText);
-	setControlsDependsOnSelectingMode(false);
-
+void ApplicationGUI::uploadMeshFromText() {
 	QString file_name = QFileDialog::getOpenFileName(this, "Choose PolygonalMesh source", QDir::homePath());
+
+	if (file_name == "")
+		return;
 
 	std::ifstream in(file_name.toStdString());
 	std::string str((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
@@ -1010,102 +921,30 @@ void ApplicationGUI::uploadMeshFromText(DrawingArea* drawingAreaOfMesh) {
 		return;
 	}
 
+	if (mesh->F.size() != 1) {
+		QMessageBox::critical(this, "Error", "Only polygonal mesh with one face can be loaded. Your mesh contains " + QString::number(mesh->F.size()) + " faces.");
+		return;
+	}
+
 	auto data = mesh->convertToPolygonData();
-	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
-		ui.polygonDrawingArea->clearDrawArea();
-		polygon = new a::Polygon(data.vertex_x.size());
-		ui.spin_numOfSides->setValue(polygon->getNumOfSides());
 
-		for (int i = 0; i < data.vertex_x.size(); ++i) {
-			addPointToPolygon(data.vertex_x[i], data.vertex_y[i], true);
-		}
-	}
-	else {
-		drawPolygonMesh(drawingAreaOfMesh, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-	}
-}
+	ui.polygonDrawingArea->clearDrawArea();
+	polygon = new a::Polygon(data.vertex_x.size());
+	ui.spin_numOfSides->setValue(polygon->getNumOfSides());
 
-void ApplicationGUI::btn_saveAsImage(bool checked)
-{
-	if (!isHintForSelectDrawingAreaShowned) {
-		isHintForSelectDrawingAreaShowned = true;
-		QMessageBox::information(this, "", "Select the area...");
+	for (int i = 0; i < data.vertex_x.size(); ++i) {
+		addPointToPolygon(data.vertex_x[i], data.vertex_y[i], true);
 	}
-	setControlsDependsOnSelectingMode(true);
-	connect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveDrawingAreaAsImage);
 }
 
 void ApplicationGUI::saveDrawingAreaAsImage(DrawingArea* drawingAreaOfMesh)
 {
-	disconnect(this, &ApplicationGUI::drawingAreaSelected, this, &ApplicationGUI::saveDrawingAreaAsImage);
-	setControlsDependsOnSelectingMode(false);
-
 	QString file_name = QFileDialog::getSaveFileName(this, "Save Image File", QDir::homePath(), "Images (*.png)");
 
 	if (file_name.isEmpty())
 		QMessageBox::critical(this, "Error", "File name can not be empty");
 	else
 		drawingAreaOfMesh->saveImage(file_name, 1);
-}
-
-void ApplicationGUI::setControlsDependsOnSelectingMode(bool isModeToSelectDrawingArea)
-{
-	this->isModeToSelectDrawingArea = isModeToSelectDrawingArea;
-
-	if (isModeToSelectDrawingArea) {
-		controlsStatesBeforeSelectingMode.clear();
-
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_reset->isEnabled());
-		ui.btn_reset->setEnabled(false);
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_apply->isEnabled());
-		ui.btn_apply->setEnabled(false);
-
-		controlsStatesBeforeSelectingMode.push_back(ui.spin_numOfSides->isEnabled());
-		ui.spin_numOfSides->setEnabled(false);
-
-		controlsStatesBeforeSelectingMode.push_back(ui.spin_meshAngle->isEnabled());
-		ui.spin_meshAngle->setEnabled(false);
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_reset_angle->isEnabled());
-		ui.btn_reset_angle->setEnabled(false);
-
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_uploadMeshFromText->isEnabled());
-		ui.btn_uploadMeshFromText->setEnabled(false);
-
-		controlsStatesBeforeSelectingMode.push_back(ui.btn_drawPoly->isEnabled());
-		ui.btn_drawPoly->setEnabled(false);
-
-		controlsStatesBeforeSelectingMode.push_back(ui.sld_areaOfPart->isEnabled());
-		ui.sld_areaOfPart->setEnabled(false);
-
-		ui.polygonDrawingArea->setHoverEffectEnabled(true);
-		ui.drar_mainStages_rotated->setHoverEffectEnabled(true);
-		ui.drar_mainStages_concavePoints->setHoverEffectEnabled(true);
-		ui.drar_mainStages_convexParts->setHoverEffectEnabled(true);
-		ui.drar_mainStages_optimal->setHoverEffectEnabled(true);
-	}
-	else {
-		int cnt = 0;
-
-		ui.btn_reset->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-		ui.btn_apply->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-
-		ui.spin_numOfSides->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-
-		ui.spin_meshAngle->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-		ui.btn_reset_angle->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-
-		ui.btn_uploadMeshFromText->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-
-		ui.btn_drawPoly->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-
-		ui.sld_areaOfPart->setEnabled(controlsStatesBeforeSelectingMode[cnt++]);
-
-		ui.polygonDrawingArea->deleteAllEffects();
-		ui.drar_mainStages_rotated->deleteAllEffects();
-		ui.drar_mainStages_concavePoints->deleteAllEffects();
-		ui.drar_mainStages_convexParts->deleteAllEffects();
-		ui.drar_mainStages_optimal->deleteAllEffects();
-	}
 }
 
 void ApplicationGUI::clearAllAlgoDrawingAreas()
