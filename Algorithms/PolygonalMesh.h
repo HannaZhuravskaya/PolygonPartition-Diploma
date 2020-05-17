@@ -94,7 +94,6 @@ public:
 #pragma region Mesh-PolygonData Convertation 
 
 	PolygonData convertToPolygonData();
-	void convertFromPolygonData(PolygonData data);
 	void convertFromPolygonDataOfConvexLeftTraversalPolygon(PolygonData data);
 
 #pragma endregion

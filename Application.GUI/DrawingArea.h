@@ -59,6 +59,8 @@ public:
 	void setHoverEffectEnabled(bool isEnable = false);
 	void deleteAllEffects();
 
+	DrawingArea* copyDrawingArea();
+
 private:
 	void setGrid();
 	void setDefaultPen();

@@ -23,8 +23,8 @@ void ApplicationGUI::initializeControls()
 	ui.progressBar->setVisible(false);
 
 	////////////////////////////////
-	currentConexPartitionsMeshe = -1;
-	conexPartitionsMeshes = std::vector<std::pair<Mesh*,ConvexPartitionCharacteristics*>>();
+	currentConvexPartitionsMesh = -1;
+	convexPartitionsMeshes = std::vector<std::pair<Mesh*, ConvexPartitionCharacteristics*>>();
 	//3,3
 	ui.drar_mainStages_rotated->setScale(3, 3);
 	ui.drar_mainStages_rotated->setGridVisibility(true);
@@ -94,7 +94,7 @@ void ApplicationGUI::initializeControls()
 		[=](bool checked) {
 			ui.convexPartitions->setVisible(true);
 			ui.mainAlgoImages->setVisible(false);
-			ui.lbl_numOfConvexPartitions->setText("Part " + QString::number(currentConexPartitionsMeshe + 1) + " / " + QString::number(conexPartitionsMeshes.size()));
+			ui.lbl_numOfConvexPartitions->setText("Part " + QString::number(currentConvexPartitionsMesh + 1) + " / " + QString::number(convexPartitionsMeshes.size()));
 		});
 
 	connect(ui.btn_convexPartitionStages, &QPushButton::clicked, this,
@@ -127,17 +127,9 @@ void ApplicationGUI::initializeControls()
 			ui.mainAlgoImages->setVisible(true);
 		});
 
-	connect(ui.btn_goToNextPartition, &QPushButton::clicked, this,
-		[=](bool checked) {
-			tryDrawNextConvexPartitionMesh();
-			ui.lbl_numOfConvexPartitions->setText("Partition " + QString::number(currentConexPartitionsMeshe + 1) + " / " + QString::number(conexPartitionsMeshes.size()));
-		});
+	connect(ui.btn_goToNextPartition, &QPushButton::clicked, this, [=](bool checked) {tryDrawNextConvexPartitionMesh(); });
 
-	connect(ui.btn_goToPrevPartition, &QPushButton::clicked, this,
-		[=](bool checked) {
-			tryDrawPrevConvexPartitionMesh();
-			ui.lbl_numOfConvexPartitions->setText("Partition " + QString::number(currentConexPartitionsMeshe + 1) + " / " + QString::number(conexPartitionsMeshes.size()));
-		});
+	connect(ui.btn_goToPrevPartition, &QPushButton::clicked, this, [=](bool checked) {tryDrawPrevConvexPartitionMesh(); });
 
 #pragma endregion
 
@@ -167,30 +159,46 @@ void ApplicationGUI::initializeControls()
 			ui.mainAlgoImages->setVisible(true);
 		});
 
-	connect(ui.btn_goToNextConvexPart, &QPushButton::clicked, this,
-		[=](bool checked) {
-			tryDrawNextPartPartition();
-			ui.lbl_numOfConvexPart->setText("Part " + QString::number(currentPartPartition + 1) + " / " + QString::number(partPartitions.size()));
-		});
+	connect(ui.btn_goToNextConvexPart, &QPushButton::clicked, this, [=](bool checked) {tryDrawNextPartPartition(); });
 
-	connect(ui.btn_goToPrevConvexPart, &QPushButton::clicked, this,
-		[=](bool checked) {
-			tryDrawPrevPartPartition();
-			ui.lbl_numOfConvexPart->setText("Part " + QString::number(currentPartPartition + 1) + " / " + QString::number(partPartitions.size()));
-		});
+	connect(ui.btn_goToPrevConvexPart, &QPushButton::clicked, this, [=](bool checked) {tryDrawPrevPartPartition(); });
 
 	partPartitions = std::vector<std::tuple<PolygonData, PolygonData, PolygonData, PolygonData>>();
 
 #pragma endregion
+
+	connect(ui.btn_help, &QPushButton::clicked, this,
+		[=](bool clicked) {
+			QString link = "https://github.com/HannaZhuravskaya/PolygonPartition-Diploma";
+			QDesktopServices::openUrl(QUrl(link));
+		});
+
+	connect(ui.btn_saveResults, &QPushButton::clicked, this, [=](bool clicked) {saveResults(); });
+	ui.qrb_processingResults->setEnabled(false);
+
+	ui.btn_algoResults_show->setVisible(false);
+	ui.btn_algoResults_hide->setVisible(true);
+
+	connect(ui.btn_algoResults_show, &QPushButton::clicked, this,
+		[=](bool clicked) {
+			ui.btn_algoResults_show->setVisible(false);
+			ui.frm_algoResults->setGeometry(27, 23, 201, 150);
+		});
+
+	connect(ui.btn_algoResults_hide, &QPushButton::clicked, this,
+		[=](bool clicked) {
+			ui.btn_algoResults_show->setVisible(true);
+			ui.frm_algoResults->setGeometry(26, 22, 20, 20);
+		});
 }
 
 void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 {
 	clearAllAlgoDrawingAreas();
 
-	ui.lbl_info_nonDividedArea_optimal_2->setText("");
-	ui.lbl_info_notDividedPercent_optimal_2->setText("");
-	ui.lbl_info_optimisationFuncValue_optimal_2->setText("");
+	ui.frm_algoResults->setVisible(false);
+
+	ui.qrb_processingResults->setEnabled(false);
 
 	if (grb_name == "polygonProperties") {
 		if (isNext) {
@@ -417,7 +425,7 @@ void ApplicationGUI::convertToSplittedMesh()
 
 	auto result = m.convertToPolygonData();
 	r.tryRrotateTheFigureBack(&result.vertex_x, &result.vertex_y);
-	drawPolygonMesh(ui.polygonDrawingArea, 5, result.vertex_x, result.vertex_y, result.edges, result.faces);
+	drawPolygonMesh(ui.polygonDrawingArea, 4, result.vertex_x, result.vertex_y, result.edges, result.faces);
 }
 
 void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean)
@@ -629,26 +637,23 @@ PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
 }
 
 bool ApplicationGUI::tryDrawNextConvexPartitionMesh() {
-	if (currentConexPartitionsMeshe + 1 == conexPartitionsMeshes.size() || currentConexPartitionsMeshe + 1 < 0)
-		return false;
+	currentConvexPartitionsMesh++;
 
-	currentConexPartitionsMeshe++;
-
-	drawCurPartConvexPartitionMesh();
+	return tryDrawCurPartConvexPartitionMesh();
 }
 
 bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
-	if (currentConexPartitionsMeshe - 1 < 0 || currentConexPartitionsMeshe - 1 >= conexPartitionsMeshes.size())
-		return false;
+	currentConvexPartitionsMesh--;
 
-	currentConexPartitionsMeshe--;
-
-	drawCurPartConvexPartitionMesh();
+	return tryDrawCurPartConvexPartitionMesh();
 }
 
-void ApplicationGUI::drawCurPartConvexPartitionMesh() {
-	auto curMesh = conexPartitionsMeshes[currentConexPartitionsMeshe].first;
-	auto curCharacteristics = conexPartitionsMeshes[currentConexPartitionsMeshe].second;
+bool ApplicationGUI::tryDrawCurPartConvexPartitionMesh() {
+	if (currentConvexPartitionsMesh < 0 || currentConvexPartitionsMesh >= convexPartitionsMeshes.size())
+		return false;
+
+	auto curMesh = convexPartitionsMeshes[currentConvexPartitionsMesh].first;
+	auto curCharacteristics = convexPartitionsMeshes[currentConvexPartitionsMesh].second;
 
 	auto data = curMesh->convertToPolygonData();
 	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
@@ -656,27 +661,28 @@ void ApplicationGUI::drawCurPartConvexPartitionMesh() {
 	ui.lbl_info_nonDividedArea->setText(QString::number(curCharacteristics->getAreaOfNotSplittedParts()));
 	ui.lbl_info_notDividedPercent->setText(QString::number(curCharacteristics->getPercentageOfNotSplittedParts()) + "%");
 	ui.lbl_info_optimisationFuncValue->setText(QString::number(curCharacteristics->getOptimizationFuncValue()));
+
+	ui.lbl_numOfConvexPartitions->setText("Partition " + QString::number(currentConvexPartitionsMesh + 1) + " / " + QString::number(convexPartitionsMeshes.size()));
+
+	return true;
 }
 
 bool ApplicationGUI::tryDrawNextPartPartition() {
-	if (currentPartPartition + 1 == partPartitions.size() || currentPartPartition + 1 < 0)
-		return false;
-
 	currentPartPartition++;
 
-	drawCurPartPartition();
+	return tryDrawCurPartPartition();
 }
 
 bool ApplicationGUI::tryDrawPrevPartPartition() {
-	if (currentPartPartition - 1 < 0 || currentPartPartition - 1 >= partPartitions.size())
-		return false;
-
 	currentPartPartition--;
 
-	drawCurPartPartition();
+	return tryDrawCurPartPartition();
 }
 
-void ApplicationGUI::drawCurPartPartition() {
+bool ApplicationGUI::tryDrawCurPartPartition() {
+	if (currentPartPartition >= partPartitions.size() || currentPartPartition < 0)
+		return false;
+
 	auto cur = partPartitions[currentPartPartition];
 
 	drawPolygonData(ui.drar_convexPart_part, 2, std::get<0>(cur));
@@ -691,6 +697,10 @@ void ApplicationGUI::drawCurPartPartition() {
 		drawPolygonData(ui.drar_convexPart_splittedFaces, 2, std::get<2>(cur));
 		drawPolygonData(ui.drar_convexPart_optimal, 2, std::get<3>(cur));
 	}
+
+	ui.lbl_numOfConvexPart->setText("Part " + QString::number(currentPartPartition + 1) + " / " + QString::number(partPartitions.size()));
+
+	return true;
 }
 
 void ApplicationGUI::setPartPartitionControlsVisibility(bool isNotDividedPart) {
@@ -764,12 +774,12 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	test1 = m.convertToString();
 
 	//////////////
-	conexPartitionsMeshes.clear();
-	for (int i = 0; i < meshesRef.size(); ++i) {
-		conexPartitionsMeshes.push_back({ meshesRef[i], meshesRefCharacteristics[i] });
+	convexPartitionsMeshes.clear();
+	for (int i = 0; i < meshesRef.size() && meshesRef.size() != 1; ++i) {
+		convexPartitionsMeshes.push_back({ meshesRef[i], meshesRefCharacteristics[i] });
 	}
 
-	currentConexPartitionsMeshe = -1;
+	currentConvexPartitionsMesh = -1;
 	ui.lbl_partitionToConvexParts_optimal->setText("Optimal partition - " + QString::number(optimalIndex + 1));
 	ui.lbl_info_nonDividedArea_optimal->setText(QString::number(optimalCharacteristics->getAreaOfNotSplittedParts()));
 	ui.lbl_info_notDividedPercent_optimal->setText(QString::number(optimalCharacteristics->getPercentageOfNotSplittedParts()) + "%");
@@ -777,7 +787,10 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	ui.lbl_info_nonDividedArea_optimal_2->setText(QString::number(optimalCharacteristics->getAreaOfNotSplittedParts()));
 	ui.lbl_info_notDividedPercent_optimal_2->setText(QString::number(optimalCharacteristics->getPercentageOfNotSplittedParts()) + "%");
 	ui.lbl_info_optimisationFuncValue_optimal_2->setText(QString::number(optimalCharacteristics->getOptimizationFuncValue()));
+	ui.frm_algoResults->setVisible(true);
 	tryDrawNextConvexPartitionMesh();
+
+	ui.qrb_processingResults->setEnabled(true);
 	/////////////
 
 	test3 = optimal->convertToString();
@@ -874,42 +887,6 @@ void ApplicationGUI::test(Rotation r) {
 	ui.progressBar->setVisible(false);
 }
 
-void ApplicationGUI::saveMeshAsText(DrawingArea* drawingAreaOfMesh) {
-	QString file_name = QFileDialog::getSaveFileName(this, "Save Text File", QDir::homePath(), "Text files(*.txt)");
-
-	if (file_name.isEmpty()) {
-		QMessageBox::critical(this, "Error", "File name can not be empty");
-		return;
-	}
-
-	std::string toSave = "";
-
-	if (drawingAreaOfMesh == ui.polygonDrawingArea) {
-		toSave = polygonDrawingAreaMesh;
-	}
-	else if (drawingAreaOfMesh == ui.drar_mainStages_rotated) {
-		toSave = test1;
-	}
-	else if (drawingAreaOfMesh == ui.drar_mainStages_concavePoints) {
-		toSave = test2;
-	}
-	else if (drawingAreaOfMesh == ui.drar_mainStages_convexParts) {
-		toSave = test3;
-	}
-	else if (drawingAreaOfMesh == ui.drar_mainStages_optimal) {
-		toSave = test4;
-	}
-
-	if (toSave == "") {
-		QMessageBox::critical(this, "Error", "Can not save mesh in file.");
-		return;
-	}
-
-	std::ofstream out(file_name.toStdString());
-	out << toSave;
-	out.close();
-}
-
 void ApplicationGUI::uploadMeshFromText() {
 	QString file_name = QFileDialog::getOpenFileName(this, "Choose PolygonalMesh source", QDir::homePath());
 
@@ -941,14 +918,168 @@ void ApplicationGUI::uploadMeshFromText() {
 	}
 }
 
-void ApplicationGUI::saveDrawingAreaAsImage(DrawingArea* drawingAreaOfMesh)
+void ApplicationGUI::saveResults()
 {
-	QString file_name = QFileDialog::getSaveFileName(this, "Save Image File", QDir::homePath(), "Images (*.png)");
+	QString directory = QFileDialog::getExistingDirectory(this, "Open Directory", "/home", QFileDialog::ShowDirsOnly);
 
-	if (file_name.isEmpty())
-		QMessageBox::critical(this, "Error", "File name can not be empty");
-	else
-		drawingAreaOfMesh->saveImage(file_name, 1);
+	if (directory == "")
+		return;
+
+	if (!ui.chb_isSave_mainSteps->isChecked() && !ui.chb_isSave_partitionIntoConvexParts->isChecked() && !ui.chb_isSave_convexPartPartition->isChecked()) {
+		QMessageBox::warning(this, "", "To save the results of the algorithm, select at least one of the possible save options");
+		return;
+	}
+
+	if (ui.chb_isSave_partitionIntoConvexParts->isChecked() && convexPartitionsMeshes.size() > 100) {
+		QMessageBox::StandardButton reply;
+		reply = QMessageBox::question(this, "",
+			"This polygon has " + QString::number(convexPartitionsMeshes.size()) + " possible divisions into convex parts. It may take a long time to save them. Are you sure you want to continue?",
+			QMessageBox::Yes | QMessageBox::No);
+
+		if (reply == QMessageBox::No) {
+			return;
+		}
+	}
+
+	int count = 1;
+	directory += "/Polygon partition results_";
+
+	while (QDir(directory + QString::number(count)).exists()) {
+		count++;
+	}
+
+	directory += QString::number(count);
+
+	QDir().mkdir(directory);
+
+	QString subDir = "";
+
+	int pgb_partitionIntoConvexParts = ui.chb_isSave_partitionIntoConvexParts->isChecked() ? 90 : 0;
+	int pgb_mainStep = (100 - pgb_partitionIntoConvexParts) / 2;
+	int pgb_partPartition = pgb_mainStep;
+	int pgb_partitionIntoConvexParts_Freq;
+
+	if (pgb_partitionIntoConvexParts >= convexPartitionsMeshes.size() && pgb_partitionIntoConvexParts != 0) {
+		pgb_partitionIntoConvexParts = 80 / convexPartitionsMeshes.size();
+		pgb_partitionIntoConvexParts_Freq = 1;
+	}
+	else if(pgb_partitionIntoConvexParts < convexPartitionsMeshes.size() && pgb_partitionIntoConvexParts != 0){
+		pgb_partitionIntoConvexParts = 1;
+		pgb_partitionIntoConvexParts_Freq = convexPartitionsMeshes.size()  / 80;
+	}
+
+	ui.progressBar->setValue(0);
+	ui.progressBar->setVisible(true);
+
+	if (ui.chb_isSave_mainSteps->isChecked()) {
+		ui.progressBar->setVisible(false);
+		progressBarStep = pgb_mainStep;
+		saveMainStepsResults(directory);
+		ui.progressBar->setVisible(true);
+	}
+
+	if (ui.chb_isSave_partitionIntoConvexParts->isChecked()) {
+		progressBarStep = pgb_partitionIntoConvexParts;
+		progressBarStepFreq = pgb_partitionIntoConvexParts_Freq;
+		subDir = directory + "/Partition into convex parts";
+		QDir().mkdir(subDir);
+		savePartitionIntoConvexPartsResults(subDir);
+	}
+
+	if (ui.chb_isSave_convexPartPartition->isChecked()) {
+		progressBarStep = pgb_partPartition;
+		subDir = directory + "/Convex part partitions";
+		QDir().mkdir(subDir);
+		saveConvexPartPartitionsResults(subDir);
+	}
+
+	ui.progressBar->setVisible(false);
+
+	QMessageBox::information(this, "", "Results saved");
+}
+
+void ApplicationGUI::saveMainStepsResults(QString folder) {
+#pragma region app screenshot
+	setWidgetToScreenShot(ui.mainAlgoImages);
+
+	QPixmap pixmap(this->size());
+	this->render(&pixmap, QPoint(), QRegion(this->rect()));
+
+	pixmap.toImage().save(folder + "/1. results.png");
+
+	setWidgetToOriginalState();
+#pragma endregion
+
+#pragma region original polygon image
+	auto copy = ui.polygonDrawingArea->copyDrawingArea();
+
+	auto data = convertPolygonToPolygonData();
+	drawPolygonData(copy, 4, *data);
+	copy->saveImage(folder + "/2. original.png");
+
+	copy->close();
+	copy->parentWidget()->setParent(NULL);
+	copy->deleteLater();
+#pragma endregion copy polygonDrawingArea, draw original polygon, delete drawingArea
+
+#pragma region splitted polygon image
+	ui.polygonDrawingArea->saveImage(folder + "/3. splitted.png");
+#pragma endregion
+
+#pragma original polygon as text
+	Mesh m = Mesh();
+	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
+	auto meshAsText = m.convertToString();
+
+	std::ofstream out(folder.toStdString() + "/4. original.txt");
+	out << meshAsText;
+	out.close();
+#pragma endregion
+
+	ui.progressBar->setValue(ui.progressBar->value() + progressBarStep);
+}
+
+void ApplicationGUI::savePartitionIntoConvexPartsResults(QString folder) {
+#pragma region app screenshot
+	setWidgetToScreenShot(ui.convexPartitions);
+
+	QPixmap pixmap(ui.convexPartitions->size());
+
+	int freq = 0;
+
+	while (tryDrawNextConvexPartitionMesh()) {
+		ui.convexPartitions->render(&pixmap, QPoint(), ui.convexPartitions->rect());
+
+		pixmap.toImage().save(folder + "/" + QString::number(currentConvexPartitionsMesh + 1) + ".png");
+
+		freq++;
+
+		if (freq == progressBarStepFreq) {
+			freq = 0;
+			ui.progressBar->setValue(ui.progressBar->value() + progressBarStep);
+		}
+	}
+
+	setWidgetToOriginalState();
+#pragma endregion save all convex partition results
+}
+
+void ApplicationGUI::saveConvexPartPartitionsResults(QString folder) {
+#pragma region app screenshot
+	setWidgetToScreenShot(ui.convexPartsPartition);
+
+	QPixmap pixmap(ui.convexPartsPartition->size());
+
+	while (tryDrawNextPartPartition()) {
+		ui.convexPartsPartition->render(&pixmap, QPoint(), ui.convexPartsPartition->rect());
+
+		pixmap.toImage().save(folder + "/" + QString::number(currentPartPartition + 1) + ".png");
+	}
+
+	setWidgetToOriginalState();
+#pragma endregion save all convex part partition results
+
+	ui.progressBar->setValue(ui.progressBar->value() + progressBarStep);
 }
 
 void ApplicationGUI::clearAllAlgoDrawingAreas()
@@ -964,4 +1095,61 @@ void ApplicationGUI::clearAllAlgoDrawingAreas()
 	ui.convexPartitions->setVisible(false);
 	ui.convexPartsPartition->setVisible(false);
 	ui.mainAlgoImages->setVisible(true);
+}
+
+void ApplicationGUI::setWidgetToScreenShot(QWidget* activeBottomWidget) {
+	ui.tabWidget->setCurrentIndex(0);
+
+	mouseCoordinates->setVisible(false);
+
+	bottomGroupBoxesVisibility = { ui.mainAlgoImages->isVisible(), ui.convexPartitions->isVisible(), ui.convexPartsPartition->isVisible() };
+	currentPartitionsValues = { currentPartPartition, currentConvexPartitionsMesh };
+
+	ui.btn_goToNextPartition->setVisible(false);
+	ui.btn_goToPrevPartition->setVisible(false);
+	ui.btn_goToNextConvexPart->setVisible(false);
+	ui.btn_goToPrevConvexPart->setVisible(false);
+	ui.btn_backToMainAlgoStages_fromConvexPartDetails->setVisible(false);
+	ui.btn_backToMainAlgoStages_fromConvexPartitions->setVisible(false);
+
+	if (activeBottomWidget == ui.mainAlgoImages) {
+		ui.mainAlgoImages->setVisible(true);
+		ui.convexPartitions->setVisible(false);
+		ui.convexPartsPartition->setVisible(false);
+	}
+	else if (activeBottomWidget == ui.convexPartitions) {
+		ui.mainAlgoImages->setVisible(false);
+		ui.convexPartitions->setVisible(true);
+		ui.convexPartsPartition->setVisible(false);
+
+		currentConvexPartitionsMesh = -1;
+	}
+	else if (activeBottomWidget == ui.convexPartsPartition) {
+		ui.mainAlgoImages->setVisible(false);
+		ui.convexPartitions->setVisible(false);
+		ui.convexPartsPartition->setVisible(true);
+
+		currentPartPartition = -1;
+	}
+}
+
+void ApplicationGUI::setWidgetToOriginalState() {
+	ui.tabWidget->setCurrentIndex(1);
+
+	ui.btn_goToNextPartition->setVisible(true);
+	ui.btn_goToPrevPartition->setVisible(true);
+	ui.btn_goToNextConvexPart->setVisible(true);
+	ui.btn_goToPrevConvexPart->setVisible(true);
+	ui.btn_backToMainAlgoStages_fromConvexPartDetails->setVisible(true);
+	ui.btn_backToMainAlgoStages_fromConvexPartitions->setVisible(true);
+
+	ui.mainAlgoImages->setVisible(std::get<0>(bottomGroupBoxesVisibility));
+	ui.convexPartitions->setVisible(std::get<1>(bottomGroupBoxesVisibility));
+	ui.convexPartsPartition->setVisible(std::get<2>(bottomGroupBoxesVisibility));
+
+	currentPartPartition = std::get<0>(currentPartitionsValues);
+	currentConvexPartitionsMesh = std::get<1>(currentPartitionsValues);
+
+	tryDrawCurPartPartition();
+	tryDrawCurPartConvexPartitionMesh();
 }

@@ -8,8 +8,10 @@
 #include <QProgressBar>
 #include <QFileDialog>
 #include <QCheckBox>
+#include <QDesktopServices>
 #include <QDir>
 #include <QMessageBox>
+#include <QFrame>
 #include <string>
 #include "../Algorithms/Polygon.h"
 #include "..\Algorithms\PolygonData.h"
@@ -39,7 +41,11 @@ protected:
 
 	void btn_drawPoly(bool checked);
 	void btn_doAlgo(bool checked);
-	void saveDrawingAreaAsImage(DrawingArea* drawingAreaOfMesh);
+	void saveResults();
+	void saveMainStepsResults(QString folder);
+	void savePartitionIntoConvexPartsResults(QString folder);
+	void saveConvexPartPartitionsResults(QString folder);
+
 	void saveMeshAsText(DrawingArea* drawingAreaOfMesh);
 	void uploadMeshFromText();
 
@@ -78,17 +84,17 @@ private:
 	std::string test3;
 	std::string test4;
 
-	std::vector<std::pair<Mesh*, ConvexPartitionCharacteristics*>> conexPartitionsMeshes;
-	int currentConexPartitionsMeshe;
+	std::vector<std::pair<Mesh*, ConvexPartitionCharacteristics*>> convexPartitionsMeshes;
+	int currentConvexPartitionsMesh;
 	bool tryDrawNextConvexPartitionMesh();
 	bool tryDrawPrevConvexPartitionMesh();
-	void drawCurPartConvexPartitionMesh();
+	bool tryDrawCurPartConvexPartitionMesh();
 
 	std::vector<std::tuple<PolygonData, PolygonData, PolygonData, PolygonData>> partPartitions;
 	int currentPartPartition;
 	bool tryDrawNextPartPartition();
 	bool tryDrawPrevPartPartition();
-	void drawCurPartPartition();
+	bool tryDrawCurPartPartition();
 	void setPartPartitionControlsVisibility(bool isNotDividedPart);
 
 	void clearAllAlgoDrawingAreas();
@@ -97,6 +103,14 @@ private:
 	Mesh* optimal;
 	ConvexPartitionCharacteristics* optimalCharacteristics;
 	void test(Rotation r);
+
+	void setWidgetToScreenShot(QWidget* activeBottomWidget);
+	void setWidgetToOriginalState();
+	int progressBarStep;
+	int progressBarStepFreq;
+
+	std::tuple<bool, bool, bool> bottomGroupBoxesVisibility;
+	std::tuple<int, int> currentPartitionsValues;
 
 Q_SIGNALS:
 	void drawingAreaSelected(DrawingArea* selectedDrawingArea);

@@ -221,10 +221,10 @@ void DrawingArea::saveImage(QString fileName, int borderWidth)
 {
 	auto pixmapWithBorder = new QPixmap(pixmap->width() + borderWidth * 2, pixmap->height() + borderWidth * 2);
 	
-	painter = new QPainter(pixmapWithBorder);
-	painter->setBrush(Qt::black);
-	painter->drawRect(0, 0, pixmapWithBorder->width(), pixmapWithBorder->height());
-	painter->drawPixmap(borderWidth, borderWidth, *pixmap);
+	auto newPainter = new QPainter(pixmapWithBorder);
+	newPainter->setBrush(Qt::black);
+	newPainter->drawRect(0, 0, pixmapWithBorder->width(), pixmapWithBorder->height());
+	newPainter->drawPixmap(borderWidth, borderWidth, *pixmap);
 
 	pixmapWithBorder->toImage().save(fileName);
 }
@@ -241,6 +241,18 @@ void DrawingArea::deleteAllEffects()
 	auto effect = new QGraphicsColorizeEffect();
 	effect->setColor(QColor(0, 0, 0));
 	setGraphicsEffect(effect);
+}
+
+DrawingArea* DrawingArea::copyDrawingArea() {
+	auto drawingArea = new DrawingArea((QWidget*)this->parent());
+	drawingArea->setGeometry(this->rect());
+	drawingArea->setFrameShape(this->frameShape());
+	drawingArea->setTextFormat(this->textFormat());
+	drawingArea->setText(this->text());
+	drawingArea->setScale(this->xScale, this->yScale);
+	drawingArea->setGridVisibility(this->gridVisibility);
+
+	return drawingArea;
 }
 
 void DrawingArea::setGrid()
