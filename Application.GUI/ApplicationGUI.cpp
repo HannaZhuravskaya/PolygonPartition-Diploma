@@ -67,18 +67,10 @@ void ApplicationGUI::initializeControls()
 
 	connect(ui.sld_areaOfPart, &RangeSlider::maximumPositionChanged, this,
 		[=](int max) {
-			if (isSliderAreaInPercents) {
-				maxArea = (double)((int)(polygonArea *  max))  / 100;
-				ui.sld_maxPosLabel->setText(QString::number(max) + "%");
-				ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
-				setSliderLabelsPosition();
-			}
-			else {
-				maxArea = max / SLD_SCALE;
-				ui.sld_maxPosLabel->setText(QString::number(maxArea));
-				ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
-				setSliderLabelsPosition();
-			}
+			maxArea = isSliderAreaInPercents ? (double)((int)(polygonArea * max)) / 100 : max / SLD_SCALE;
+			ui.sld_maxPosLabel->setText(isSliderAreaInPercents ? QString::number(max) + "%" : QString::number(maxArea));
+			ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
+			setSliderLabelsPosition();
 		});
 
 	connect(ui.sld_areaOfPart, &RangeSlider::sliderRealesed, this,
@@ -98,19 +90,12 @@ void ApplicationGUI::initializeControls()
 
 			if (ui.sld_areaOfPart->maximumPosition() == 0) {
 				ui.sld_areaOfPart->setMaximum(0);
-				ui.sld_areaOfPart->setMinimum(0);
 			}
 			else {
-				if (isSliderAreaInPercents) {
-
-					ui.sld_areaOfPart->setMaximum(50);
-					ui.sld_areaOfPart->setMinimum(0);
-				}
-				else {
-					ui.sld_areaOfPart->setMaximum(polygonArea * SLD_SCALE / 2);
-					ui.sld_areaOfPart->setMinimum(0);
-				}
+				ui.sld_areaOfPart->setMaximum(isSliderAreaInPercents ? 50 : polygonArea * SLD_SCALE / 2);
 			}
+
+			ui.sld_areaOfPart->setMinimum(0);
 
 			sliderRangeChanged();
 
@@ -126,7 +111,6 @@ void ApplicationGUI::initializeControls()
 		});
 
 	isSliderAreaInPercents = ui.chb_isAreaRestrictionsInPercent->isChecked();
-
 #pragma endregion
 
 #pragma region Mesh properties
@@ -296,14 +280,7 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.spin_numOfSides->setEnabled(false);
 
 			ui.lbl_polygonArea->setText(QString::number(polygonArea));
-
-			if (isSliderAreaInPercents) {
-				ui.sld_areaOfPart->setMaximum(50);
-			}
-			else {
-				ui.sld_areaOfPart->setMaximum(polygonArea * SLD_SCALE / 2);
-			}
-
+			ui.sld_areaOfPart->setMaximum(isSliderAreaInPercents ? 50 : polygonArea * SLD_SCALE / 2);
 			ui.sld_areaOfPart->setEnabled(true);
 			sliderRangeChanged();
 
@@ -552,7 +529,6 @@ void ApplicationGUI::setSliderLabelsPosition()
 	}
 }
 
-
 void ApplicationGUI::calculatePolygonProperties()
 {
 	bool isSelfIntersected = false;
@@ -588,28 +564,15 @@ void ApplicationGUI::calculatePolygonProperties()
 
 void ApplicationGUI::sliderRangeChanged()
 {
-	if (isSliderAreaInPercents) {
-		if (ui.sld_areaOfPart->maximum() > 0)
-		{
-			ui.sld_areaOfPart->setMinimum(1);
-		}
-
-		ui.sld_areaOfPart->setMinimumPosition(0);
-		ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
-
-		areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
+	if (ui.sld_areaOfPart->maximum() > 0)
+	{
+		ui.sld_areaOfPart->setMinimum(isSliderAreaInPercents ? 1 : 10);
 	}
-	else {
-		if (ui.sld_areaOfPart->maximum() > 0)
-		{
-			ui.sld_areaOfPart->setMinimum(10);
-		}
 
-		ui.sld_areaOfPart->setMinimumPosition(0);
-		ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
+	ui.sld_areaOfPart->setMinimumPosition(0);
+	ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
 
-		areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
-	}
+	areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
 }
 
 void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
@@ -621,19 +584,10 @@ void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
 		ui.lbl_maxAreaOfPart->setText("");
 	}
 	else {
-		if(isSliderAreaInPercents){
-			minArea = (double)((int)(polygonArea * min)) / 100;
-			maxArea = (double)((int)(polygonArea * max)) / 100;
-			ui.sld_minPosLabel->setText(QString::number(min) + "%");
-			ui.sld_maxPosLabel->setText(QString::number(max) + "%");
-		}
-		else {
-			minArea = min / SLD_SCALE;
-			maxArea = max / SLD_SCALE;
-			ui.sld_minPosLabel->setText(QString::number(minArea));
-			ui.sld_maxPosLabel->setText(QString::number(maxArea));
-		}
-
+		minArea = isSliderAreaInPercents ? (double)((int)(polygonArea * min)) / 100 : min / SLD_SCALE;
+		maxArea = isSliderAreaInPercents ? (double)((int)(polygonArea * max)) / 100 : max / SLD_SCALE;
+		ui.sld_minPosLabel->setText(isSliderAreaInPercents ? QString::number(min) + "%" : QString::number(minArea));
+		ui.sld_maxPosLabel->setText(isSliderAreaInPercents ? QString::number(max) + "%" : QString::number(maxArea));
 		ui.lbl_minAreaOfPart->setText(QString::number(minArea));
 		ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
 		setSliderLabelsPosition();
