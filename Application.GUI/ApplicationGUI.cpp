@@ -188,6 +188,10 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 {
 	clearAllAlgoDrawingAreas();
 
+	ui.lbl_info_nonDividedArea_optimal_2->setText("");
+	ui.lbl_info_notDividedPercent_optimal_2->setText("");
+	ui.lbl_info_optimisationFuncValue_optimal_2->setText("");
+
 	if (grb_name == "polygonProperties") {
 		if (isNext) {
 			activeGroupBox = "areaProperties";
@@ -270,10 +274,10 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.btn_reset_angle->setEnabled(false);
 			anglePoints = std::make_pair(nullptr, nullptr);
 			ui.meshAngleDrawingArea->clearDrawArea();
-
-			auto data = convertPolygonToPolygonData();
-			drawPolygonData(ui.polygonDrawingArea, 4, *data);
 		}
+
+		auto data = convertPolygonToPolygonData();
+		drawPolygonData(ui.polygonDrawingArea, 4, *data);
 	}
 }
 
@@ -291,7 +295,7 @@ void ApplicationGUI::addPointToPolygon(double x, double y, bool isLogicCoords)
 	logicPoint = ui.polygonDrawingArea->PixelToLogicCoords(QPoint(pixelPoint.x(), pixelPoint.y()), false);
 
 	if (polygon != nullptr && polygon->tryAddPoint({ logicPoint.x(), logicPoint.y() })) {
-		ui.polygonDrawingArea->drawEllipse(QPoint(pixelPoint.x(), pixelPoint.y()), 5, false, Qt::black);
+		ui.polygonDrawingArea->drawEllipse(QPoint(pixelPoint.x(), pixelPoint.y()), 4, false, Qt::black);
 
 		if (polygon->getNumOfPoints() > 1)
 		{
