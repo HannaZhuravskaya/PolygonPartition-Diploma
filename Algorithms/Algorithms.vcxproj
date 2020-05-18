@@ -164,12 +164,20 @@
     <None Include="cpp.hint" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ConvexPartitionCharacteristics.h" />
+    <ClInclude Include="Helper.h" />
+    <ClInclude Include="Intersection.h" />
+    <ClInclude Include="Point.h" />
     <ClInclude Include="Polygon.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PolygonalMesh.h" />
+    <ClInclude Include="Rotation.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ConvexPartitionCharacteristics.cpp" />
+    <ClCompile Include="Helper.cpp" />
+    <ClCompile Include="Intersection.cpp" />
     <ClCompile Include="Polygon.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pch.cpp">
@@ -178,10 +186,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="PolygonAlgorithms.cpp" />
     <ClCompile Include="PolygonData.cpp" />
     <ClCompile Include="PolygonData.h" />
     <ClCompile Include="PolygonalMesh.cpp" />
+    <ClCompile Include="Rotation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="DebugView.natvis" />
