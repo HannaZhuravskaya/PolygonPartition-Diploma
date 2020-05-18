@@ -116,7 +116,7 @@ namespace AlgorithmTests
 			Assert::AreEqual(m->V[2]->numOfVertex, 2);
 			Assert::AreEqual(m->V[2]->isDeleted, false);
 
-			Assert::IsTrue(m->V[3]->e == m->E[3]); 
+			Assert::IsTrue(m->V[3]->e == m->E[3]);
 			Assert::AreEqual(m->V[3]->numOfVertex, 3);
 			Assert::AreEqual(m->V[3]->isDeleted, false);
 #pragma endregion
@@ -357,7 +357,7 @@ namespace AlgorithmTests
 			Assert::IsNotNull(e->sym);
 			Assert::IsTrue((e == m->E[5] && e->sym == m->E[6]) || (e == m->E[6] && e->sym == m->E[5]));
 
-			checkEdge(m->E[0] ,0, m->V[0], m->E[4],m->E[1], nullptr, m->F[0], false);
+			checkEdge(m->E[0], 0, m->V[0], m->E[4], m->E[1], nullptr, m->F[0], false);
 			checkEdge(m->E[1], 1, m->V[1], m->E[0], m->E[5], nullptr, m->F[0], false);
 			checkEdge(m->E[2], 2, m->V[2], m->E[3], m->E[6], nullptr, m->F[1], false);
 			checkEdge(m->E[3], 3, m->V[3], m->E[6], m->E[2], nullptr, m->F[1], false);
@@ -465,12 +465,12 @@ namespace AlgorithmTests
 			auto m = getTriangleMesh();
 			auto data = m->convertToPolygonData();
 
-			Assert::AreEqual(data.vertex_x[0], 5.0,EPS);
-			Assert::AreEqual(data.vertex_y[0], 0.0,EPS);
-			Assert::AreEqual(data.vertex_x[1], 0.0,EPS);
-			Assert::AreEqual(data.vertex_y[1], 5.0,EPS);
-			Assert::AreEqual(data.vertex_x[2], 0.0,EPS);
-			Assert::AreEqual(data.vertex_y[2], 0.0,EPS);
+			Assert::AreEqual(data.vertex_x[0], 5.0, EPS);
+			Assert::AreEqual(data.vertex_y[0], 0.0, EPS);
+			Assert::AreEqual(data.vertex_x[1], 0.0, EPS);
+			Assert::AreEqual(data.vertex_y[1], 5.0, EPS);
+			Assert::AreEqual(data.vertex_x[2], 0.0, EPS);
+			Assert::AreEqual(data.vertex_y[2], 0.0, EPS);
 
 			Assert::AreEqual(data.edges[0], 0);
 			Assert::AreEqual(data.edges[1], 1);
@@ -500,61 +500,10 @@ namespace AlgorithmTests
 			Assert::AreEqual(data.faces[0], 0);
 			Assert::AreEqual(data.faces[1], 3);
 		}
-		
-		/*TEST_METHOD(splitByVerticalGrid) {
-			auto m = getTestMesh();
-			m->splitByVerticalGrid();
-		}*/
-
-		//TEST_METHOD(splitFaces_RectangleWithCenterPoint_ReturnsOneEdge2_2And2_0) {
-		//	vectorD x = { 4, 4, 2, 0, 0};
-		//	vectorD y = { 0, 2, 2, 2, 0 };
-		//	vectorI edges = { 0, 1, 2, 3, 4 };
-
-		//	PolygonData* data = new PolygonData();
-		//	data->vertex_x = x;
-		//	data->vertex_y = y;
-		//	data->tryAddFace(edges.size(), edges);
-
-		//	auto m = Mesh();
-		//	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data, 8);
-
-		//	m.splitByVerticalGrid();
-		//	auto edge = m.splitFaces(2);
-		//	auto edg2 = m.verticalMesh;
-
-		//	/*if()
-		//	Assert::AreEqual(edge[0].first.x == 0 )*/
-		//}
-
-
-
-		//TEST_METHOD(splitFaces_VerticleRectangleWithCenterPoint_ReturnsOneEdge2_2And2_0) {
-		//	vectorD x = { 2, 2, 0, 0 };
-		//	vectorD y = { 0, 4, 4, 0 };
-		//	vectorI edges = { 0, 1, 2, 3};
-
-		//	PolygonData* data = new PolygonData();
-		//	data->vertex_x = x;
-		//	data->vertex_y = y;
-		//	data->tryAddFace(edges.size(), edges);
-
-		//	auto m = Mesh();
-		//	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data, 8);
-
-		//	m.splitByVerticalGrid();
-		//	auto edge = m.splitFaces(4);
-		//	auto edg2 = m.verticalMesh;
-
-		//	m.test();
-
-		//	/*if()
-		//	Assert::AreEqual(edge[0].first.x == 0 )*/
-		//}
 
 		TEST_METHOD(splitFaces_Ales) {
 			vectorD x = { 0, 3, 3, 0 };
-			vectorD y = { 0, 0, 6, 6};
+			vectorD y = { 0, 0, 6, 6 };
 			vectorI edges = { 0, 1, 2, 3 };
 
 			PolygonData* data = new PolygonData();
@@ -563,7 +512,7 @@ namespace AlgorithmTests
 			data->tryAddFace(edges.size(), edges);
 
 			auto m = Mesh();
-			m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data, 18);
+			m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
 
 			m.splitByVerticalGrid();
 			auto edge = m.splitFaces(6);
@@ -579,156 +528,14 @@ namespace AlgorithmTests
 			Assert::AreEqual(optimal.second, 0LL);
 		}
 
-
-
-#pragma region Comments
-
-		///4 Triangle - dont work
-/*vectorD* x = new vectorD();
-vectorD* y = new vectorD();
-
-vectorI faces;
-vectorI edges;
-
-x->push_back(10);
-x->push_back(15);
-x->push_back(20);
-x->push_back(15);
-x->push_back(5);
-x->push_back(25);
-
-y->push_back(10);
-y->push_back(15);
-y->push_back(10);
-y->push_back(5);
-y->push_back(15);
-y->push_back(15);
-
-
-faces.push_back(0);
-faces.push_back(3);
-faces.push_back(6);
-faces.push_back(9);
-faces.push_back(12);
-
-edges.push_back(0);
-edges.push_back(1);
-edges.push_back(4);
-edges.push_back(0);
-edges.push_back(1);
-edges.push_back(2);
-edges.push_back(2);
-edges.push_back(1);
-edges.push_back(5);
-edges.push_back(0);
-edges.push_back(2);
-edges.push_back(3);
-
-PolygonData data = PolygonData();
-data.edges = edges;
-data.faces = faces;
-data.vertex_x = *x;
-data.vertex_y = *y;
-
-drawPolygonMesh(ui.drawingArea_test, 2, *x, *y, edges, faces);
-
-Mesh m = Mesh();
-m.convertFromPolygonData(data);*/
-
-//// 1 right traversal polygon
-/*
-polygon = new a::Polygon(4);
-polygon->tryAddPoint({ 20, 20 });
-polygon->tryAddPoint({ 10, 20 });
-polygon->tryAddPoint({ 10, 10 });
-polygon->tryAddPoint({ 20, 10 });
-*/
-
-//add and delete points
-/*
-//vectorD x = vectorD(polygon->getNumOfPoints());
-//vectorD y = vectorD(polygon->getNumOfPoints());
-//vectorI edges = vectorI(polygon->getNumOfPoints());
-
-
-//for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
-//	auto point = polygon->getPointAt(i);
-//	x[i] = point.x;
-//	y[i] = point.y;
-//	edges[i] = i;
-//}
-
-//PolygonData data = PolygonData();
-//data.vertex_x = x;
-//data.vertex_y = y;
-//data.tryAddFace(edges.size(), edges);
-//drawPolygonMesh(ui.drawingArea_test, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-
-//Mesh m = Mesh();
-//m.convertFromPolygonDataTEST(data);
-//m.F[0]->area = polygonArea;
-
-
-////m.splitFaces(polygonArea / ui.spin_numOfParts->value());
-
-//auto vToDelete = m.splitEdge(m.E[0], new Point{ 50, 50 });
-
-//auto data1 = m.convertToPolygonData();
-//drawPolygonMesh(ui.drawingArea_test_2, 2, data1.vertex_x, data1.vertex_y, data1.edges, data1.faces);
-
-
-//m.removeVertex(vToDelete);
-//auto data2 = m.convertToPolygonData();
-//drawPolygonMesh(ui.polygonDrawingArea, 5, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
-*/
-
-//new
-			//vectorD x = vectorD(polygon->getNumOfPoints());
-			//vectorD y = vectorD(polygon->getNumOfPoints());
-			//vectorI edges = vectorI(polygon->getNumOfPoints());
-
-
-			//for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
-			//	auto point = polygon->getPointAt(i);
-			//	x[i] = point.x;
-			//	y[i] = point.y;
-			//	edges[i] = i;
-			//}
-
-			//PolygonData data = PolygonData();
-			//data.vertex_x = x;
-			//data.vertex_y = y;
-			//data.tryAddFace(edges.size(), edges);
-			//drawPolygonMesh(ui.drawingArea_test, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-
-			//Mesh m = Mesh();
-			//m.convertFromPolygonDataTEST(data, polygonArea);
-			//m.F[0]->area = polygonArea;
-
-
-			////m.splitFaces(polygonArea / ui.spin_numOfParts->value());
-			//auto edgeToDelete = m.connectVertexes(m.splitEdge(m.E[0], new Point{ 50, 50 }), m.splitEdge(m.E[1], new Point{ 20, 20 }));
-
-
-			//auto data1 = m.convertToPolygonData();
-			//drawPolygonMesh(ui.drawingArea_test_2, 2, data1.vertex_x, data1.vertex_y, data1.edges, data1.faces);
-
-
-			//auto vertexesToDelete = m.removeEdge(edgeToDelete);
-			//for (int i = 0; i < vertexesToDelete.size(); ++i) {
-			//	m.removeVertex(vertexesToDelete[i]);
-			//}
-
-			//auto data2 = m.convertToPolygonData();
-			//drawPolygonMesh(ui.polygonDrawingArea, 5, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
-
 #pragma endregion
 
-#pragma endregion
+	private:
+#pragma region Help methods
 
 		Mesh* getTriangleMesh() {
 			Mesh* m = new Mesh();
-			m->convertFromPolygonDataOfConvexLeftTraversalPolygon(*getTrianglePolygonData(), 12.5);
+			m->convertFromPolygonDataOfConvexLeftTraversalPolygon(*getTrianglePolygonData());
 
 			return m;
 		}
@@ -748,7 +555,7 @@ polygon->tryAddPoint({ 20, 10 });
 
 		Mesh* getTestMesh() {
 			Mesh* m = new Mesh();
-			m->convertFromPolygonDataOfConvexLeftTraversalPolygon(*getTestPolygonData(), 16.5);
+			m->convertFromPolygonDataOfConvexLeftTraversalPolygon(*getTestPolygonData());
 
 			return m;
 		}
@@ -776,10 +583,12 @@ polygon->tryAddPoint({ 20, 10 });
 			Assert::IsTrue(e->isDeleted == isDeleted);
 		}
 
-		void checkVertex(Vertex* v, Edge * edge, int numOfVertex, bool isDeleted) {
+		void checkVertex(Vertex* v, Edge* edge, int numOfVertex, bool isDeleted) {
 			Assert::IsTrue(v->e == edge);
 			Assert::AreEqual(v->numOfVertex, numOfVertex);
 			Assert::AreEqual(v->isDeleted, isDeleted);
 		}
+
+#pragma endregion
 	};
 }

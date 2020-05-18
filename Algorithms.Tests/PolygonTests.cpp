@@ -195,9 +195,3 @@ namespace AlgorithmTests
 #pragma endregion
 	};
 }
-
-
-/*
-	int getNumOfSides();
-	bool tryAddPoint(Point point);
-*/

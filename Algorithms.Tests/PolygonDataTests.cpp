@@ -51,7 +51,6 @@ namespace AlgorithmTests
 			int numOfPoints = 5;
 
 			vectorI points(3);
-			//points << 0, 2, 3;
 
 			polData.tryAddPoints(vectorD(numOfPoints), vectorD(numOfPoints));
 			Assert::AreEqual(true, polData.tryAddFace(points.size(), points));
@@ -60,7 +59,6 @@ namespace AlgorithmTests
 			Assert::AreEqual(numOfPoints, polData.getNumOfVertexes());
 		}
 
-		//Add tests!!!
 #pragma endregion
 	};
 }
