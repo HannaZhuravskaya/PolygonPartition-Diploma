@@ -6,7 +6,7 @@
 #include "../Algorithms/PolygonalMesh.h"
 #include "CppUnitTest.h"
 
-using namespace Algorithms;
+using namespace algo;
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 #endif 

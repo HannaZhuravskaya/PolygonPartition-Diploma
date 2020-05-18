@@ -24,6 +24,68 @@ void DrawingArea::setGeometry(const QRect& rect) {
 	fillByPixmap();
 }
 
+int DrawingArea::x() {
+	return this->xPos;
+}
+
+int DrawingArea::y() {
+	return this->yPos;
+}
+
+void DrawingArea::setX()
+{
+	this->xPos = QLabel::x();
+
+	QWidget* w = (QWidget*)this->parent();
+	while (w->parent() != nullptr) {
+		try {
+			this->xPos += w->x();
+
+			QTabWidget* tab = dynamic_cast<QTabWidget*>(w);
+			if (tab != nullptr)
+				this->xPos += 2;
+
+			w = (QWidget*)(w->parent());
+		}
+		catch (std::exception) {
+			break;
+		}
+	}
+}
+
+void DrawingArea::setY()
+{
+	this->yPos = QLabel::y();
+
+	QWidget* w = (QWidget*)this->parent();
+	while (w->parent() != nullptr) {
+		try {
+			this->yPos += w->y();
+
+			QTabWidget* tab = dynamic_cast<QTabWidget*>(w);
+			if (tab != nullptr)
+				this->yPos += 26;
+
+			w = (QWidget*)(w->parent());
+		}
+		catch (std::exception) {
+			break;
+		}
+	}
+}
+
+void DrawingArea::setGridVisibility(bool isVisible)
+{
+	gridVisibility = isVisible;
+	clearDrawArea();
+}
+
+void DrawingArea::setScale(int x, int y)
+{
+	xScale = x;
+	yScale = y;
+}
+
 void DrawingArea::fillByPixmap() {
 	pixmap = new QPixmap(this->width(), this->height());
 	painter = new QPainter(pixmap);
@@ -127,68 +189,6 @@ void DrawingArea::drawText(QString text, QPoint leftTop, QPoint rightBottom, boo
 	setDefaultPen();
 }
 
-int DrawingArea::x() {
-	return this->xPos;
-}
-
-int DrawingArea::y() {
-	return this->yPos;
-}
-
-void DrawingArea::setX()
-{
-	this->xPos = QLabel::x();
-
-	QWidget* w = (QWidget*)this->parent();
-	while (w->parent() != nullptr) {
-		try {
-			this->xPos += w->x();
-
-			QTabWidget* tab = dynamic_cast<QTabWidget*>(w);
-			if (tab != nullptr)
-				this->xPos += 2;
-
-			w = (QWidget*)(w->parent());
-		}
-		catch (std::exception) {
-			break;
-		}
-	}
-}
-
-void DrawingArea::setY()
-{
-	this->yPos = QLabel::y();
-
-	QWidget* w = (QWidget*)this->parent();
-	while (w->parent() != nullptr) {
-		try {
-			this->yPos += w->y();
-
-			QTabWidget* tab = dynamic_cast<QTabWidget*>(w);
-			if (tab != nullptr)
-				this->yPos += 26;
-
-			w = (QWidget*)(w->parent());
-		}
-		catch (std::exception) {
-			break;
-		}
-	}
-}
-
-void DrawingArea::setGridVisibility(bool isVisible)
-{
-	gridVisibility = isVisible;
-	clearDrawArea();
-}
-
-void DrawingArea::setScale(int x, int y)
-{
-	xScale = x;
-	yScale = y;
-}
-
 void DrawingArea::setMouseTracking(bool isMouseTracking, QLabel* mouseCoordinates)
 {
 	QLabel::setMouseTracking(isMouseTracking);
@@ -289,7 +289,7 @@ QPoint DrawingArea::AppToWidjetCoords(QPoint p)
 	return QPoint(p.x() - xPos, p.y() - yPos);
 }
 
-QPoint DrawingArea::WidjetToAppCoordes(QPoint p)
+QPoint DrawingArea::WidjetToAppCoords(QPoint p)
 {
 	return QPoint(p.x() + xPos, p.y() + yPos);
 }
@@ -308,7 +308,7 @@ QPoint DrawingArea::LogicToPixelCoords(QPointF p, bool isWidjetCoords)
 	auto pixelPoint = QPoint(p.x() * xScale, this->height() - p.y() * yScale);
 
 	if (!isWidjetCoords) {
-		pixelPoint = WidjetToAppCoordes(pixelPoint);
+		pixelPoint = WidjetToAppCoords(pixelPoint);
 	}
 
 	return pixelPoint;

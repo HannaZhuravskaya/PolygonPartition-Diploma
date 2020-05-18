@@ -16,16 +16,68 @@ ApplicationGUI::ApplicationGUI(QWidget* parent)
 	ui.polygonDrawingArea->setMouseTracking(true, mouseCoordinates);
 }
 
+void ApplicationGUI::mousePressEvent(QMouseEvent* event)
+{
+	if (event->button() == Qt::LeftButton) {
+		auto point = event->pos();
+
+		if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
+			addPointToPolygon(point.x(), point.y());
+		}
+		else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y()) && ui.tabWidget->currentIndex() == 0) {
+			addPointToAngle(point.x(), point.y());
+		}
+	}
+}
+
+void ApplicationGUI::mouseMoveEvent(QMouseEvent* event)
+{
+	mouseCoordinates->setVisible(false);
+}
+
+void ApplicationGUI::sliderRangeChanged()
+{
+	if (ui.sld_areaOfPart->maximum() > 0)
+	{
+		ui.sld_areaOfPart->setMinimum(isSliderAreaInPercents ? 1 : 10);
+	}
+
+	ui.sld_areaOfPart->setMinimumPosition(0);
+	ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
+
+	areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
+}
+
+void ApplicationGUI::setSliderLabelsPosition()
+{
+	auto w = ui.sld_areaOfPart->width();
+	auto lbl_w = 40;
+	auto lbl_h = 16;
+	auto offset = 10;
+
+	ui.sld_minPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 40, lbl_w, lbl_h);
+
+	QRect d = ui.sld_maxPosLabel->geometry();
+	QRect droppedRect = QRect(d.left(), 40, d.width(), d.height());
+
+	if (droppedRect.intersects(ui.sld_minPosLabel->geometry()))
+	{
+		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 0, lbl_w, lbl_h);
+	}
+	else {
+		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 40, lbl_w, lbl_h);
+	}
+}
+
 void ApplicationGUI::initializeControls()
 {
 #pragma region Main Stages
 
 	ui.progressBar->setVisible(false);
 
-	////////////////////////////////
 	currentConvexPartitionsMesh = -1;
 	convexPartitionsMeshes = std::vector<std::pair<Mesh*, ConvexPartitionCharacteristics*>>();
-	//3,3
+	
 	ui.drar_mainStages_rotated->setScale(3, 3);
 	ui.drar_mainStages_rotated->setGridVisibility(true);
 	ui.drar_mainStages_rotated->clearDrawArea();
@@ -43,33 +95,35 @@ void ApplicationGUI::initializeControls()
 	ui.drar_mainStages_optimal->clearDrawArea();
 
 	connect(ui.btn_uploadMeshFromText, &QPushButton::clicked, this, [=](bool checked) {uploadMeshFromText(); });
-	connect(ui.btn_drawPoly, &QPushButton::clicked, this, &ApplicationGUI::btn_drawPoly);
-	////////////////////////////////
+	connect(ui.btn_drawPoly, &QPushButton::clicked, this, &ApplicationGUI::drawTestPolygon);
+	
 	mouseCoordinates = new QLabel(this);
 	mouseCoordinates->setStyleSheet("QLabel { background-color : white;}");
 
 	mouseCoordinates->setGeometry(5, 5, 50, 10);
 
 #pragma region Polygon properties
+
 	ui.polygonDrawingArea->setGridVisibility(true);
 	connect(ui.btn_apply, &QPushButton::clicked, this, [=](bool checked) {setActiveGroupBox("polygonProperties", true); });
 	connect(ui.btn_reset, &QPushButton::clicked, this, [=](bool checked) {setActiveGroupBox("polygonProperties", false); });
+
 #pragma endregion
 
 #pragma region Area properties
 	connect(ui.sld_areaOfPart, &RangeSlider::minimumPositionChanged, this,
 		[=](int min) {
-			minArea = isSliderAreaInPercents ? (double)((int)(polygonArea * min)) / 100 : min / SLD_SCALE;
-			ui.sld_minPosLabel->setText(isSliderAreaInPercents ? QString::number(min) + "%" : QString::number(minArea));
-			ui.lbl_minAreaOfPart->setText(QString::number(minArea));
+			minPartArea = isSliderAreaInPercents ? (double)((int)(polygonArea * min)) / 100 : min / SLD_SCALE;
+			ui.sld_minPosLabel->setText(isSliderAreaInPercents ? QString::number(min) + "%" : QString::number(minPartArea));
+			ui.lbl_minAreaOfPart->setText(QString::number(minPartArea));
 			setSliderLabelsPosition();
 		});
 
 	connect(ui.sld_areaOfPart, &RangeSlider::maximumPositionChanged, this,
 		[=](int max) {
-			maxArea = isSliderAreaInPercents ? (double)((int)(polygonArea * max)) / 100 : max / SLD_SCALE;
-			ui.sld_maxPosLabel->setText(isSliderAreaInPercents ? QString::number(max) + "%" : QString::number(maxArea));
-			ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
+			maxPartArea = isSliderAreaInPercents ? (double)((int)(polygonArea * max)) / 100 : max / SLD_SCALE;
+			ui.sld_maxPosLabel->setText(isSliderAreaInPercents ? QString::number(max) + "%" : QString::number(maxPartArea));
+			ui.lbl_maxAreaOfPart->setText(QString::number(maxPartArea));
 			setSliderLabelsPosition();
 		});
 
@@ -77,7 +131,7 @@ void ApplicationGUI::initializeControls()
 		[=]() {
 			if (anglePoints.first != nullptr && anglePoints.second != nullptr) {
 				setActiveGroupBox("meshProperties", true);
-				btn_doAlgo(true);
+				tryExecuteAlgorithm();
 			}
 			else {
 				setActiveGroupBox("meshProperties", false);
@@ -102,7 +156,7 @@ void ApplicationGUI::initializeControls()
 			if (ui.sld_areaOfPart->maximumPosition() != 0) {
 				if (anglePoints.first != nullptr && anglePoints.second != nullptr) {
 					setActiveGroupBox("meshProperties", true);
-					btn_doAlgo(true);
+					tryExecuteAlgorithm();
 				}
 				else {
 					setActiveGroupBox("meshProperties", false);
@@ -111,6 +165,7 @@ void ApplicationGUI::initializeControls()
 		});
 
 	isSliderAreaInPercents = ui.chb_isAreaRestrictionsInPercent->isChecked();
+
 #pragma endregion
 
 #pragma region Mesh properties
@@ -246,7 +301,7 @@ void ApplicationGUI::setActiveGroupBox(std::string grb_name, bool isNext)
 			ui.spin_meshAngle->setEnabled(false);
 			ui.btn_reset_angle->setEnabled(false);
 
-			polygon = new a::Polygon(ui.spin_numOfSides->value());
+			polygon = new algo::Polygon(ui.spin_numOfSides->value());
 			polygonArea = 0;
 			anglePoints = std::make_pair(nullptr, nullptr);
 		}
@@ -353,17 +408,17 @@ void ApplicationGUI::addPointToPolygon(double x, double y, bool isLogicCoords)
 void ApplicationGUI::addPointToAngle(int x, int y)
 {
 	if (anglePoints.first == nullptr) {
-		anglePoints.first = new a::Point{ (double)x, (double)y };
+		anglePoints.first = new Point{ (double)x, (double)y };
 		ui.meshAngleDrawingArea->drawEllipse(QPoint(x, y), 4, false);
 	}
 	else if (anglePoints.second == nullptr) {
 		if ((double)x < anglePoints.first->x) {
-			anglePoints.second = new a::Point{ anglePoints.first->x, anglePoints.first->y };
-			anglePoints.first = new a::Point{ (double)x, (double)y };
+			anglePoints.second = new  Point{ anglePoints.first->x, anglePoints.first->y };
+			anglePoints.first = new  Point{ (double)x, (double)y };
 		}
 		else
 		{
-			anglePoints.second = new a::Point{ (double)x, (double)y };
+			anglePoints.second = new  Point{ (double)x, (double)y };
 		}
 
 		ui.spin_meshAngle->setValue(Rotation::findAngleOfSegmentInDegrees(anglePoints.first->x, anglePoints.first->y, anglePoints.second->x, anglePoints.second->y));
@@ -383,8 +438,7 @@ void ApplicationGUI::addPointToAngle(int x, int y)
 
 		setActiveGroupBox("meshProperties", true);
 
-		btn_doAlgo(true);
-		//convertToMesh();
+		tryExecuteAlgorithm();
 	}
 }
 
@@ -393,13 +447,7 @@ bool ApplicationGUI::isInMeshAngleDrawingAreaBounds(int x, int y)
 	return activeGroupBox == "meshProperties" && ui.meshAngleDrawingArea;
 }
 
-void ApplicationGUI::mouseMoveEvent(QMouseEvent* event)
-{
-	mouseCoordinates->setVisible(false);
-}
-
-void ApplicationGUI::convertToSplittedMesh()
-{
+PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
 	vectorD* x = new vectorD(polygon->getNumOfPoints());
 	vectorD* y = new vectorD(polygon->getNumOfPoints());
 	vectorI* edges = new vectorI(polygon->getNumOfPoints());
@@ -421,41 +469,121 @@ void ApplicationGUI::convertToSplittedMesh()
 		}
 	}
 
-	Rotation r = Rotation(ui.spin_meshAngle->value(), RotationDirection::Right);
-	r.tryRotateFigure(x, y);
+	PolygonData* data = new PolygonData();
+	data->vertex_x = *x;
+	data->vertex_y = *y;
+	data->tryAddFace(edges->size(), *edges);
 
-	PolygonData rotatedData = PolygonData();
-	rotatedData.vertex_x = *x;
-	rotatedData.vertex_y = *y;
-	rotatedData.tryAddFace(edges->size(), *edges);
+	return data;
+}
 
-	drawPolygonMesh(ui.drar_mainStages_rotated, 2, rotatedData.vertex_x, rotatedData.vertex_y, rotatedData.edges, rotatedData.faces);
+void ApplicationGUI::uploadMeshFromText() {
+	QString file_name = QFileDialog::getOpenFileName(this, "Choose PolygonalMesh source", QDir::homePath());
 
-	Mesh m = Mesh();
-	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(rotatedData);
-	m.F[0]->area = polygonArea;
+	if (file_name == "")
+		return;
 
-	m.splitByVerticalGrid();
+	std::ifstream in(file_name.toStdString());
+	std::string str((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 
-	auto SplittedByGridData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drar_mainStages_concavePoints, 2, SplittedByGridData.vertex_x, SplittedByGridData.vertex_y, SplittedByGridData.edges, SplittedByGridData.faces);
+	auto mesh = Mesh::convertFromString(str);
+	if (mesh == nullptr) {
+		QMessageBox::critical(this, "Error", "Can not be converted into polygonal mesh");
+		return;
+	}
 
-	//auto splitedEdges = m.splitFaces(polygonArea / ui.spin_numOfParts->value());
-	auto splitedEdges = nullptr;
+	if (mesh->F.size() != 1) {
+		QMessageBox::critical(this, "Error", "Only polygonal mesh with one face can be loaded. Your mesh contains " + QString::number(mesh->F.size()) + " faces.");
+		return;
+	}
 
-	auto verticalSplittedData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drar_mainStages_convexParts, 2, verticalSplittedData.vertex_x, verticalSplittedData.vertex_y, verticalSplittedData.edges, verticalSplittedData.faces);
+	auto data = mesh->convertToPolygonData();
 
-	auto perims = m.getInternalHorizontalPerimeters();
-	auto optimal = m.getOptimalCombinationForInternalPerimeter(perims);
-	m.splitMeshByMask(optimal.second);
+	ui.polygonDrawingArea->clearDrawArea();
+	polygon = new  algo::Polygon(data.vertex_x.size());
+	ui.spin_numOfSides->setValue(polygon->getNumOfSides());
 
-	auto horisontalSplittedData = m.convertToPolygonData();
-	drawPolygonMesh(ui.drar_mainStages_optimal, 2, horisontalSplittedData.vertex_x, horisontalSplittedData.vertex_y, horisontalSplittedData.edges, horisontalSplittedData.faces);
+	for (int i = 0; i < data.vertex_x.size(); ++i) {
+		addPointToPolygon(data.vertex_x[i], data.vertex_y[i], true);
+	}
+}
 
-	auto result = m.convertToPolygonData();
-	r.tryRrotateTheFigureBack(&result.vertex_x, &result.vertex_y);
-	drawPolygonMesh(ui.polygonDrawingArea, 4, result.vertex_x, result.vertex_y, result.edges, result.faces);
+void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
+{
+	if (min == max && min == 0) {
+		ui.sld_minPosLabel->setText("");
+		ui.sld_maxPosLabel->setText("");
+		ui.lbl_minAreaOfPart->setText("");
+		ui.lbl_maxAreaOfPart->setText("");
+	}
+	else {
+		minPartArea = isSliderAreaInPercents ? (double)((int)(polygonArea * min)) / 100 : min / SLD_SCALE;
+		maxPartArea = isSliderAreaInPercents ? (double)((int)(polygonArea * max)) / 100 : max / SLD_SCALE;
+		ui.sld_minPosLabel->setText(isSliderAreaInPercents ? QString::number(min) + "%" : QString::number(minPartArea));
+		ui.sld_maxPosLabel->setText(isSliderAreaInPercents ? QString::number(max) + "%" : QString::number(maxPartArea));
+		ui.lbl_minAreaOfPart->setText(QString::number(minPartArea));
+		ui.lbl_maxAreaOfPart->setText(QString::number(maxPartArea));
+		setSliderLabelsPosition();
+	}
+}
+
+void ApplicationGUI::calculatePolygonProperties()
+{
+	bool isSelfIntersected = false;
+	int size = polygon->getNumOfPoints();
+
+	for (int i = 0; i < size; ++i) {
+		for (int j = (i + 2) % size; i != (j + 1) % size; j = (j + 1) % size) {
+			if (Intersection::doIntersect(
+				polygon->getPointAt(i), polygon->getPointAt((i + 1) % size),
+				polygon->getPointAt(j), polygon->getPointAt((j + 1) % size)))
+			{
+				isSelfIntersected = true;
+				break;
+			}
+		}
+
+		if (isSelfIntersected)
+			break;
+	}
+
+	if (isSelfIntersected) {
+		QMessageBox::critical(this, "", "Polygon can not be self-intersecting");
+	}
+	else {
+		polygonArea = polygon->getSquare();
+		setActiveGroupBox("areaProperties", true);
+	}
+}
+
+void ApplicationGUI::drawTestPolygon()
+{
+	ui.polygonDrawingArea->clearDrawArea();
+
+	polygon = new  algo::Polygon(10);
+	ui.spin_numOfSides->setValue(polygon->getNumOfSides());
+
+	QPoint p;
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 50.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 45.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 40.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 30.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 30.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 20.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 15.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 5.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 15.0 }, false);
+	addPointToPolygon(p.x(), p.y());
+	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 55.0 }, false);
+	addPointToPolygon(p.x(), p.y());
 }
 
 void ApplicationGUI::drawPolygonMesh(DrawingArea* drawingArea, int radiusOfPoints, vectorD x, vectorD y, vectorI edges, vectorI faces, bool isNeedToClean)
@@ -508,254 +636,22 @@ void ApplicationGUI::drawPolygonData(DrawingArea* drawingArea, int radiusOfPoint
 	drawPolygonMesh(drawingArea, radiusOfPoints, data.vertex_x, data.vertex_y, data.edges, data.faces, isNeedToClean);
 }
 
-void ApplicationGUI::setSliderLabelsPosition()
+void ApplicationGUI::clearAllAlgoDrawingAreas()
 {
-	auto w = ui.sld_areaOfPart->width();
-	auto lbl_w = 40;
-	auto lbl_h = 16;
-	auto offset = 10;
+	ui.drar_mainStages_rotated->clearDrawArea();
+	ui.drar_mainStages_concavePoints->clearDrawArea();
+	ui.drar_mainStages_convexParts->clearDrawArea();
+	ui.drar_mainStages_optimal->clearDrawArea();
 
-	ui.sld_minPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->minimumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 40, lbl_w, lbl_h);
+	ui.btn_allConcavePartitions->setVisible(false);
+	ui.btn_convexPartitionStages->setVisible(false);
 
-	QRect d = ui.sld_maxPosLabel->geometry();
-	QRect droppedRect = QRect(d.left(), 40, d.width(), d.height());
-
-	if (droppedRect.intersects(ui.sld_minPosLabel->geometry()))
-	{
-		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 0, lbl_w, lbl_h);
-	}
-	else {
-		ui.sld_maxPosLabel->setGeometry(offset + ((double)ui.sld_areaOfPart->maximumPosition() / ui.sld_areaOfPart->maximum() * (w - lbl_w)), 40, lbl_w, lbl_h);
-	}
+	ui.convexPartitions->setVisible(false);
+	ui.convexPartsPartition->setVisible(false);
+	ui.mainAlgoImages->setVisible(true);
 }
 
-void ApplicationGUI::calculatePolygonProperties()
-{
-	bool isSelfIntersected = false;
-	int size = polygon->getNumOfPoints();
-
-	for (int i = 0; i < size; ++i) {
-		for (int j = (i + 2) % size; i != (j + 1) % size; j = (j + 1) % size) {
-			if (a::Intersection::doIntersect(
-				polygon->getPointAt(i), polygon->getPointAt((i + 1) % size),
-				polygon->getPointAt(j), polygon->getPointAt((j + 1) % size)))
-			{
-				isSelfIntersected = true;
-				break;
-			}
-		}
-
-		if (isSelfIntersected)
-			break;
-	}
-
-	if (isSelfIntersected) {
-		QMessageBox::critical(this, "", "Polygon can not be self-intersecting");
-	}
-	else {
-		polygonArea = polygon->getSquare();
-		setActiveGroupBox("areaProperties", true);
-		auto data = convertPolygonToPolygonData();
-		Mesh m = Mesh();
-		m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
-		polygonDrawingAreaMesh = m.convertToString();
-	}
-}
-
-void ApplicationGUI::sliderRangeChanged()
-{
-	if (ui.sld_areaOfPart->maximum() > 0)
-	{
-		ui.sld_areaOfPart->setMinimum(isSliderAreaInPercents ? 1 : 10);
-	}
-
-	ui.sld_areaOfPart->setMinimumPosition(0);
-	ui.sld_areaOfPart->setMaximumPosition(ui.sld_areaOfPart->maximum());
-
-	areaOfPartRangeChanged(ui.sld_areaOfPart->minimumPosition(), ui.sld_areaOfPart->maximumPosition());
-}
-
-void ApplicationGUI::areaOfPartRangeChanged(int min, int max)
-{
-	if (min == max && min == 0) {
-		ui.sld_minPosLabel->setText("");
-		ui.sld_maxPosLabel->setText("");
-		ui.lbl_minAreaOfPart->setText("");
-		ui.lbl_maxAreaOfPart->setText("");
-	}
-	else {
-		minArea = isSliderAreaInPercents ? (double)((int)(polygonArea * min)) / 100 : min / SLD_SCALE;
-		maxArea = isSliderAreaInPercents ? (double)((int)(polygonArea * max)) / 100 : max / SLD_SCALE;
-		ui.sld_minPosLabel->setText(isSliderAreaInPercents ? QString::number(min) + "%" : QString::number(minArea));
-		ui.sld_maxPosLabel->setText(isSliderAreaInPercents ? QString::number(max) + "%" : QString::number(maxArea));
-		ui.lbl_minAreaOfPart->setText(QString::number(minArea));
-		ui.lbl_maxAreaOfPart->setText(QString::number(maxArea));
-		setSliderLabelsPosition();
-	}
-}
-
-void ApplicationGUI::mousePressEvent(QMouseEvent* event)
-{
-	if (event->button() == Qt::LeftButton) {
-		auto point = event->pos();
-
-		if (ui.polygonDrawingArea->isPointInBounds(point.x(), point.y())) {
-			addPointToPolygon(point.x(), point.y());
-		}
-		else if (isInMeshAngleDrawingAreaBounds(point.x(), point.y()) && ui.tabWidget->currentIndex() == 0) {
-			addPointToAngle(point.x(), point.y());
-		}
-	}
-}
-
-void ApplicationGUI::btn_drawPoly(bool checked)
-{
-	ui.polygonDrawingArea->clearDrawArea();
-
-	polygon = new a::Polygon(10);
-	ui.spin_numOfSides->setValue(polygon->getNumOfSides());
-
-	QPoint p;
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 50.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 45.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 40.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 30.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 35.0, 30.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 20.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 25.0, 15.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 15.0, 5.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 15.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-	p = ui.polygonDrawingArea->LogicToPixelCoords({ 45.0, 55.0 }, false);
-	addPointToPolygon(p.x(), p.y());
-}
-
-PolygonData* ApplicationGUI::convertPolygonToPolygonData() {
-	vectorD* x = new vectorD(polygon->getNumOfPoints());
-	vectorD* y = new vectorD(polygon->getNumOfPoints());
-	vectorI* edges = new vectorI(polygon->getNumOfPoints());
-
-	if (polygon->isLeftTraversal(EPS)) {
-		for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
-			auto point = polygon->getPointAt(i);
-			(*x)[i] = point.x;
-			(*y)[i] = point.y;
-			(*edges)[i] = i;
-		}
-	}
-	else {
-		for (int i = 0; i < polygon->getNumOfPoints(); ++i) {
-			auto point = polygon->getPointAt(polygon->getNumOfPoints() - 1 - i);
-			(*x)[i] = point.x;
-			(*y)[i] = point.y;
-			(*edges)[i] = polygon->getNumOfPoints() - 1 - i;
-		}
-	}
-
-	PolygonData* data = new PolygonData();
-	data->vertex_x = *x;
-	data->vertex_y = *y;
-	data->tryAddFace(edges->size(), *edges);
-
-	return data;
-}
-
-bool ApplicationGUI::tryDrawNextConvexPartitionMesh() {
-	currentConvexPartitionsMesh++;
-
-	return tryDrawCurPartConvexPartitionMesh();
-}
-
-bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
-	currentConvexPartitionsMesh--;
-
-	return tryDrawCurPartConvexPartitionMesh();
-}
-
-bool ApplicationGUI::tryDrawCurPartConvexPartitionMesh() {
-	if (currentConvexPartitionsMesh < 0 || currentConvexPartitionsMesh >= convexPartitionsMeshes.size())
-		return false;
-
-	auto curMesh = convexPartitionsMeshes[currentConvexPartitionsMesh].first;
-	auto curCharacteristics = convexPartitionsMeshes[currentConvexPartitionsMesh].second;
-
-	auto data = curMesh->convertToPolygonData();
-	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
-
-	ui.lbl_info_nonDividedArea->setText(QString::number(curCharacteristics->getAreaOfNotSplittedParts()));
-	ui.lbl_info_notDividedPercent->setText(QString::number(curCharacteristics->getPercentageOfNotSplittedParts()) + "%");
-	ui.lbl_info_optimisationFuncValue->setText(QString::number(curCharacteristics->getOptimizationFuncValue()));
-
-	ui.lbl_numOfConvexPartitions->setText("Partition " + QString::number(currentConvexPartitionsMesh + 1) + " / " + QString::number(convexPartitionsMeshes.size()));
-
-	return true;
-}
-
-bool ApplicationGUI::tryDrawNextPartPartition() {
-	currentPartPartition++;
-
-	return tryDrawCurPartPartition();
-}
-
-bool ApplicationGUI::tryDrawPrevPartPartition() {
-	currentPartPartition--;
-
-	return tryDrawCurPartPartition();
-}
-
-bool ApplicationGUI::tryDrawCurPartPartition() {
-	if (currentPartPartition >= partPartitions.size() || currentPartPartition < 0)
-		return false;
-
-	auto cur = partPartitions[currentPartPartition];
-
-	drawPolygonData(ui.drar_convexPart_part, 2, std::get<0>(cur));
-
-	if (std::get<1>(cur).vertex_x.size() == 0) {
-		setPartPartitionControlsVisibility(true);
-	}
-	else {
-		setPartPartitionControlsVisibility(false);
-		ui.lbl_info_numOfSplittedParts->setText("Number of splitted parts: " + QString::number(std::get<3>(cur).getNumOfFaces()));
-		drawPolygonData(ui.drar_convexPart_splittedVert, 2, std::get<1>(cur));
-		drawPolygonData(ui.drar_convexPart_splittedFaces, 2, std::get<2>(cur));
-		drawPolygonData(ui.drar_convexPart_optimal, 2, std::get<3>(cur));
-	}
-
-	ui.lbl_numOfConvexPart->setText("Part " + QString::number(currentPartPartition + 1) + " / " + QString::number(partPartitions.size()));
-
-	return true;
-}
-
-void ApplicationGUI::setPartPartitionControlsVisibility(bool isNotDividedPart) {
-	ui.lbl_info_notDividedPart->setVisible(isNotDividedPart);
-	ui.lbl_info_dividedPart_1->setVisible(!isNotDividedPart);
-	ui.lbl_info_dividedPart_2->setVisible(!isNotDividedPart);
-	ui.lbl_info_dividedPart_3->setVisible(!isNotDividedPart);
-	ui.drar_convexPart_splittedVert->setVisible(!isNotDividedPart);
-	ui.drar_convexPart_splittedFaces->setVisible(!isNotDividedPart);
-	ui.drar_convexPart_optimal->setVisible(!isNotDividedPart);
-	ui.lbl_info_numOfSplittedParts->setVisible(!isNotDividedPart);
-}
-
-std::vector<int> ApplicationGUI::getConcavePoints() {
-	auto data = convertPolygonToPolygonData();
-
-	Mesh m = Mesh();
-	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
-
-	return m.findConcavePoints();
-}
-
-void ApplicationGUI::btn_doAlgo(bool checked)
+void ApplicationGUI::tryExecuteAlgorithm()
 {
 	if (anglePoints.first == nullptr || anglePoints.second == nullptr)
 		return;
@@ -778,34 +674,25 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	r.tryRotateFigure(&data->vertex_x, &data->vertex_y);
 	ui.progressBar->setValue(7);
 
-	drawPolygonMesh(ui.drar_mainStages_rotated, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
+	drawPolygonData(ui.drar_mainStages_rotated, 2, *data);
 
 	Mesh m = Mesh();
 	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
-	polygonDrawingAreaMesh = m.convertToString();
-
-	auto start = std::chrono::steady_clock::now();
 
 	auto meshesRef = *m.splitToConvexPolygons(points);
 	ui.progressBar->setValue(17);
 	auto meshesRefCharacteristics = std::vector<ConvexPartitionCharacteristics*>();
-	auto optimalIndex = Mesh::getOptimalNumOfMeshWithMaxSquareForSplit(&meshesRef, minArea, maxArea, &meshesRefCharacteristics);
+	auto optimalIndex = Mesh::getOptimalNumOfMeshWithMaxSquareForSplit(&meshesRef, minPartArea, maxPartArea, &meshesRefCharacteristics);
 	optimal = meshesRef[optimalIndex];
 	optimalCharacteristics = meshesRefCharacteristics[optimalIndex];
 	ui.progressBar->setValue(20);
 
-	auto end = std::chrono::steady_clock::now();
-
-
-	auto start1 = std::chrono::steady_clock::now();
-	drawPolygonMesh(ui.drar_mainStages_concavePoints, 2, data->vertex_x, data->vertex_y, data->edges, data->faces);
+	drawPolygonData(ui.drar_mainStages_concavePoints, 2, *data);
 	for (int i = 0; i < points.size(); ++i) {
 		auto pixel = ui.drar_mainStages_concavePoints->LogicToPixelCoords(QPointF(m.V[points[i]]->pos->x, m.V[points[i]]->pos->y), false);
 		ui.drar_mainStages_concavePoints->drawEllipse(pixel, 3, false, Qt::red);
 	}
-	test1 = m.convertToString();
 
-	//////////////
 	convexPartitionsMeshes.clear();
 	for (int i = 0; i < meshesRef.size() && meshesRef.size() != 1; ++i) {
 		convexPartitionsMeshes.push_back({ meshesRef[i], meshesRefCharacteristics[i] });
@@ -823,24 +710,15 @@ void ApplicationGUI::btn_doAlgo(bool checked)
 	tryDrawNextConvexPartitionMesh();
 
 	ui.qrb_processingResults->setEnabled(true);
-	/////////////
-
-	test3 = optimal->convertToString();
 
 	auto data2 = optimal->convertToPolygonData();
-	drawPolygonMesh(ui.drar_mainStages_convexParts, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
-	drawPolygonMesh(ui.drar_partitionToConvex_optimal, 2, data2.vertex_x, data2.vertex_y, data2.edges, data2.faces);
+	drawPolygonData(ui.drar_mainStages_convexParts, 2, data2);
+	drawPolygonData(ui.drar_partitionToConvex_optimal, 2, data2);
 
-	auto end1 = std::chrono::steady_clock::now();
-
-	/*QMessageBox::information(this, "",
-		"Algo time: " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()) + " ms.\n"
-		+ "Draw time: " + QString::number(std::chrono::duration_cast<std::chrono::milliseconds>(end1 - start1).count()) + " ms.");*/
-
-	test(r);
+	splitConvexParts(r);
 }
 
-void ApplicationGUI::test(Rotation r) {
+void ApplicationGUI::splitConvexParts(Rotation r) {
 	partPartitions.clear();
 	auto meshes = std::vector<Mesh*>();
 	auto nonSplittedMeshes = std::vector<Mesh*>();
@@ -850,14 +728,14 @@ void ApplicationGUI::test(Rotation r) {
 	for (auto face : optimal->F) {
 		auto mesh = Mesh::createFromFace(face);
 
-		if (Mesh::canBeSplittedToEqualSquareParts(face, minArea, maxArea) == false) {
+		if (Mesh::canBeSplittedToEqualSquareParts(face, minPartArea, maxPartArea) == false) {
 			nonSplittedMeshes.push_back(mesh);
 			continue;
 		}
 
 		auto stage1 = mesh->convertToPolygonData();
 
-		auto partArea = Mesh::getPartAreaToSplitMeshTEST(face, minArea, maxArea);
+		auto partArea = Mesh::getPartAreaToSplitFace(face, minPartArea, maxPartArea);
 
 		if (abs(partArea - face->area) < EPS) {
 			partPartitions.push_back({ stage1, PolygonData(), PolygonData(), PolygonData() });
@@ -892,17 +770,17 @@ void ApplicationGUI::test(Rotation r) {
 
 	for (auto mesh : nonSplittedMeshes) {
 		auto data = mesh->convertToPolygonData();
-		drawPolygonMesh(ui.drar_mainStages_optimal, 2, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
+		drawPolygonData(ui.drar_mainStages_optimal, 2, data, false);
 
-		r.tryRrotateTheFigureBack(&data.vertex_x, &data.vertex_y);
+		r.tryRotateFigureBack(&data.vertex_x, &data.vertex_y);
 		drawPolygonMesh(ui.polygonDrawingArea, 0, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
 	}
 
 	for (auto mesh : meshes) {
 		auto data = mesh->convertToPolygonData();
-		drawPolygonMesh(ui.drar_mainStages_optimal, 2, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
+		drawPolygonData(ui.drar_mainStages_optimal, 2, data, false);
 
-		r.tryRrotateTheFigureBack(&data.vertex_x, &data.vertex_y);
+		r.tryRotateFigureBack(&data.vertex_x, &data.vertex_y);
 		drawColoredPolygonMesh(ui.polygonDrawingArea, 0, data.vertex_x, data.vertex_y, data.edges, data.faces, false);
 	}
 
@@ -920,35 +798,13 @@ void ApplicationGUI::test(Rotation r) {
 	ui.progressBar->setVisible(false);
 }
 
-void ApplicationGUI::uploadMeshFromText() {
-	QString file_name = QFileDialog::getOpenFileName(this, "Choose PolygonalMesh source", QDir::homePath());
+std::vector<int> ApplicationGUI::getConcavePoints() {
+	auto data = convertPolygonToPolygonData();
 
-	if (file_name == "")
-		return;
+	Mesh m = Mesh();
+	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
 
-	std::ifstream in(file_name.toStdString());
-	std::string str((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-
-	auto mesh = Mesh::convertFromString(str);
-	if (mesh == nullptr) {
-		QMessageBox::critical(this, "Error", "Can not be converted into polygonal mesh");
-		return;
-	}
-
-	if (mesh->F.size() != 1) {
-		QMessageBox::critical(this, "Error", "Only polygonal mesh with one face can be loaded. Your mesh contains " + QString::number(mesh->F.size()) + " faces.");
-		return;
-	}
-
-	auto data = mesh->convertToPolygonData();
-
-	ui.polygonDrawingArea->clearDrawArea();
-	polygon = new a::Polygon(data.vertex_x.size());
-	ui.spin_numOfSides->setValue(polygon->getNumOfSides());
-
-	for (int i = 0; i < data.vertex_x.size(); ++i) {
-		addPointToPolygon(data.vertex_x[i], data.vertex_y[i], true);
-	}
+	return m.findConcavePoints();
 }
 
 void ApplicationGUI::saveResults()
@@ -1039,7 +895,7 @@ void ApplicationGUI::saveMainStepsResults(QString folder) {
 
 	pixmap.toImage().save(folder + "/1. results.png");
 
-	setWidgetToOriginalState();
+	setWidgetToOriginalStateAfterScreenShot();
 #pragma endregion
 
 #pragma region original polygon image
@@ -1058,7 +914,7 @@ void ApplicationGUI::saveMainStepsResults(QString folder) {
 	ui.polygonDrawingArea->saveImage(folder + "/3. splitted.png");
 #pragma endregion
 
-#pragma original polygon as text
+#pragma region original polygon as text
 	Mesh m = Mesh();
 	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
 	auto meshAsText = m.convertToString();
@@ -1068,10 +924,10 @@ void ApplicationGUI::saveMainStepsResults(QString folder) {
 	out.close();
 #pragma endregion
 
-#pragma results as text
+#pragma region results as text
 	auto resultsAsText = QString();
 	resultsAsText.append("Algorithm results\n");
-	resultsAsText.append("Unused area: "+ ui.lbl_info_nonDividedArea_optimal->text() + "\n");
+	resultsAsText.append("Unused area: " + ui.lbl_info_nonDividedArea_optimal->text() + "\n");
 	resultsAsText.append("Percentage of unused area: " + ui.lbl_info_notDividedPercent_optimal->text() + "\n");
 	resultsAsText.append("Optimization function value: " + ui.lbl_info_optimisationFuncValue_optimal->text() + "\n");
 
@@ -1104,7 +960,7 @@ void ApplicationGUI::savePartitionIntoConvexPartsResults(QString folder) {
 		}
 	}
 
-	setWidgetToOriginalState();
+	setWidgetToOriginalStateAfterScreenShot();
 #pragma endregion save all convex partition results
 }
 
@@ -1120,25 +976,84 @@ void ApplicationGUI::saveConvexPartPartitionsResults(QString folder) {
 		pixmap.toImage().save(folder + "/" + QString::number(currentPartPartition + 1) + ".png");
 	}
 
-	setWidgetToOriginalState();
+	setWidgetToOriginalStateAfterScreenShot();
 #pragma endregion save all convex part partition results
 
 	ui.progressBar->setValue(ui.progressBar->value() + progressBarStep);
 }
 
-void ApplicationGUI::clearAllAlgoDrawingAreas()
-{
-	ui.drar_mainStages_rotated->clearDrawArea();
-	ui.drar_mainStages_concavePoints->clearDrawArea();
-	ui.drar_mainStages_convexParts->clearDrawArea();
-	ui.drar_mainStages_optimal->clearDrawArea();
+bool ApplicationGUI::tryDrawNextConvexPartitionMesh() {
+	currentConvexPartitionsMesh++;
+	return tryDrawCurPartConvexPartitionMesh();
+}
 
-	ui.btn_allConcavePartitions->setVisible(false);
-	ui.btn_convexPartitionStages->setVisible(false);
+bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
+	currentConvexPartitionsMesh--;
+	return tryDrawCurPartConvexPartitionMesh();
+}
 
-	ui.convexPartitions->setVisible(false);
-	ui.convexPartsPartition->setVisible(false);
-	ui.mainAlgoImages->setVisible(true);
+bool ApplicationGUI::tryDrawCurPartConvexPartitionMesh() {
+	if (currentConvexPartitionsMesh < 0 || currentConvexPartitionsMesh >= convexPartitionsMeshes.size())
+		return false;
+
+	auto curMesh = convexPartitionsMeshes[currentConvexPartitionsMesh].first;
+	auto curCharacteristics = convexPartitionsMeshes[currentConvexPartitionsMesh].second;
+
+	auto data = curMesh->convertToPolygonData();
+	drawPolygonMesh(ui.drar_partitionToConvex_current, 2, data.vertex_x, data.vertex_y, data.edges, data.faces);
+
+	ui.lbl_info_nonDividedArea->setText(QString::number(curCharacteristics->getAreaOfNotSplittedParts()));
+	ui.lbl_info_notDividedPercent->setText(QString::number(curCharacteristics->getPercentageOfNotSplittedParts()) + "%");
+	ui.lbl_info_optimisationFuncValue->setText(QString::number(curCharacteristics->getOptimizationFuncValue()));
+
+	ui.lbl_numOfConvexPartitions->setText("Partition " + QString::number(currentConvexPartitionsMesh + 1) + " / " + QString::number(convexPartitionsMeshes.size()));
+
+	return true;
+}
+
+bool ApplicationGUI::tryDrawNextPartPartition() {
+	currentPartPartition++;
+	return tryDrawCurPartPartition();
+}
+
+bool ApplicationGUI::tryDrawPrevPartPartition() {
+	currentPartPartition--;
+	return tryDrawCurPartPartition();
+}
+
+bool ApplicationGUI::tryDrawCurPartPartition() {
+	if (currentPartPartition >= partPartitions.size() || currentPartPartition < 0)
+		return false;
+
+	auto cur = partPartitions[currentPartPartition];
+
+	drawPolygonData(ui.drar_convexPart_part, 2, std::get<0>(cur));
+
+	if (std::get<1>(cur).vertex_x.size() == 0) {
+		setPartPartitionControlsVisibility(true);
+	}
+	else {
+		setPartPartitionControlsVisibility(false);
+		ui.lbl_info_numOfSplittedParts->setText("Number of splitted parts: " + QString::number(std::get<3>(cur).getNumOfFaces()));
+		drawPolygonData(ui.drar_convexPart_splittedVert, 2, std::get<1>(cur));
+		drawPolygonData(ui.drar_convexPart_splittedFaces, 2, std::get<2>(cur));
+		drawPolygonData(ui.drar_convexPart_optimal, 2, std::get<3>(cur));
+	}
+
+	ui.lbl_numOfConvexPart->setText("Part " + QString::number(currentPartPartition + 1) + " / " + QString::number(partPartitions.size()));
+
+	return true;
+}
+
+void ApplicationGUI::setPartPartitionControlsVisibility(bool isNotDividedPart) {
+	ui.lbl_info_notDividedPart->setVisible(isNotDividedPart);
+	ui.lbl_info_dividedPart_1->setVisible(!isNotDividedPart);
+	ui.lbl_info_dividedPart_2->setVisible(!isNotDividedPart);
+	ui.lbl_info_dividedPart_3->setVisible(!isNotDividedPart);
+	ui.drar_convexPart_splittedVert->setVisible(!isNotDividedPart);
+	ui.drar_convexPart_splittedFaces->setVisible(!isNotDividedPart);
+	ui.drar_convexPart_optimal->setVisible(!isNotDividedPart);
+	ui.lbl_info_numOfSplittedParts->setVisible(!isNotDividedPart);
 }
 
 void ApplicationGUI::setWidgetToScreenShot(QWidget* activeBottomWidget) {
@@ -1177,7 +1092,7 @@ void ApplicationGUI::setWidgetToScreenShot(QWidget* activeBottomWidget) {
 	}
 }
 
-void ApplicationGUI::setWidgetToOriginalState() {
+void ApplicationGUI::setWidgetToOriginalStateAfterScreenShot() {
 	ui.tabWidget->setCurrentIndex(1);
 
 	ui.btn_goToNextPartition->setVisible(true);

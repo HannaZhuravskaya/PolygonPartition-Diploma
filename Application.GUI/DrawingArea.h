@@ -65,7 +65,7 @@ private:
 	void setGrid();
 	void setDefaultPen();
 	QPoint AppToWidjetCoords(QPoint p);
-	QPoint WidjetToAppCoordes(QPoint p);
+	QPoint WidjetToAppCoords(QPoint p);
 
 protected:
 	void enterEvent(QEvent* ev) override;
