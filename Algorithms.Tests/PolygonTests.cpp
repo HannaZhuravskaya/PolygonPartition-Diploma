@@ -1,8 +1,4 @@
 #include "pch.h"
-#include "CppUnitTest.h"
-
-using namespace Algorithms;
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace AlgorithmTests
 {
