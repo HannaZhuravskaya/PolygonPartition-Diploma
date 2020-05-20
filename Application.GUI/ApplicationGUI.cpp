@@ -488,12 +488,12 @@ void ApplicationGUI::uploadMeshFromText() {
 
 	auto mesh = Mesh::convertFromString(str);
 	if (mesh == nullptr) {
-		QMessageBox::critical(this, "Error", "Can not be converted into polygonal mesh");
+		QMessageBox::critical(this, "", "Cannot be converted into polygonal mesh");
 		return;
 	}
 
 	if (mesh->F.size() != 1) {
-		QMessageBox::critical(this, "Error", "Only polygonal mesh with one face can be loaded. Your mesh contains " + QString::number(mesh->F.size()) + " faces.");
+		QMessageBox::critical(this, "", "Only polygonal mesh with one face can be loaded. Your mesh contains " + QString::number(mesh->F.size()) + " faces.");
 		return;
 	}
 
@@ -548,7 +548,7 @@ void ApplicationGUI::calculatePolygonProperties()
 	}
 
 	if (isSelfIntersected) {
-		QMessageBox::critical(this, "", "Polygon can not be self-intersecting");
+		QMessageBox::critical(this, "", "Polygon cannot be self-intersecting");
 	}
 	else {
 		polygonArea = polygon->getSquare();
@@ -661,23 +661,39 @@ void ApplicationGUI::tryExecuteAlgorithm()
 
 	ui.btn_convexPartitionStages->setVisible(true);
 
+	auto data = convertPolygonToPolygonData();
+
+	Rotation r = Rotation(ui.spin_meshAngle->value(), RotationDirection::Right);
+	r.tryRotateFigure(&data->vertex_x, &data->vertex_y);
+	
+	drawPolygonData(ui.drar_mainStages_rotated, 2, *data);
+
+	ui.progressBar->setValue(3);
+
 	auto points = getConcavePoints();
-	ui.progressBar->setValue(4);
 
 	if (points.size() > 0) {
 		ui.btn_allConcavePartitions->setVisible(true);
 	}
 
-	auto data = convertPolygonToPolygonData();
-
-	Rotation r = Rotation(ui.spin_meshAngle->value(), RotationDirection::Right);
-	r.tryRotateFigure(&data->vertex_x, &data->vertex_y);
-	ui.progressBar->setValue(7);
-
-	drawPolygonData(ui.drar_mainStages_rotated, 2, *data);
-
 	Mesh m = Mesh();
 	m.convertFromPolygonDataOfConvexLeftTraversalPolygon(*data);
+
+	drawPolygonData(ui.drar_mainStages_concavePoints, 2, *data);
+	for (int i = 0; i < points.size(); ++i) {
+		auto pixel = ui.drar_mainStages_concavePoints->LogicToPixelCoords(QPointF(m.V[points[i]]->pos->x, m.V[points[i]]->pos->y), false);
+		ui.drar_mainStages_concavePoints->drawEllipse(pixel, 3, false, Qt::red);
+	}
+
+	ui.progressBar->setValue(7);
+
+	if (points.size() > 6) {
+		ui.progressBar->setVisible(false);
+		ui.btn_convexPartitionStages->setVisible(false);
+		ui.btn_allConcavePartitions->setVisible(false);
+		QMessageBox::critical(this, "", "Polygon cannot contain more than 6 concave points. Your polygon contains - " + QString::number(points.size()) + ".");
+		return;
+	}
 
 	auto meshesRef = *m.splitToConvexPolygons(points);
 	ui.progressBar->setValue(17);
@@ -686,12 +702,6 @@ void ApplicationGUI::tryExecuteAlgorithm()
 	optimal = meshesRef[optimalIndex];
 	optimalCharacteristics = meshesRefCharacteristics[optimalIndex];
 	ui.progressBar->setValue(20);
-
-	drawPolygonData(ui.drar_mainStages_concavePoints, 2, *data);
-	for (int i = 0; i < points.size(); ++i) {
-		auto pixel = ui.drar_mainStages_concavePoints->LogicToPixelCoords(QPointF(m.V[points[i]]->pos->x, m.V[points[i]]->pos->y), false);
-		ui.drar_mainStages_concavePoints->drawEllipse(pixel, 3, false, Qt::red);
-	}
 
 	convexPartitionsMeshes.clear();
 	for (int i = 0; i < meshesRef.size() && meshesRef.size() != 1; ++i) {
