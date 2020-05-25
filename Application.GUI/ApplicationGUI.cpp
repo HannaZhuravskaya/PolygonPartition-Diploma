@@ -993,11 +993,17 @@ void ApplicationGUI::saveConvexPartPartitionsResults(QString folder) {
 }
 
 bool ApplicationGUI::tryDrawNextConvexPartitionMesh() {
+	if (currentConvexPartitionsMesh + 1 == convexPartitionsMeshes.size() || currentConvexPartitionsMesh + 1 < 0)
+		return false;
+
 	currentConvexPartitionsMesh++;
 	return tryDrawCurPartConvexPartitionMesh();
 }
 
 bool ApplicationGUI::tryDrawPrevConvexPartitionMesh() {
+	if (currentConvexPartitionsMesh - 1 < 0 || currentConvexPartitionsMesh - 1 >= convexPartitionsMeshes.size())
+		return false;
+
 	currentConvexPartitionsMesh--;
 	return tryDrawCurPartConvexPartitionMesh();
 }
@@ -1022,11 +1028,17 @@ bool ApplicationGUI::tryDrawCurPartConvexPartitionMesh() {
 }
 
 bool ApplicationGUI::tryDrawNextPartPartition() {
+	if (currentPartPartition + 1 == partPartitions.size() || currentPartPartition + 1 < 0)
+		return false;
+
 	currentPartPartition++;
 	return tryDrawCurPartPartition();
 }
 
 bool ApplicationGUI::tryDrawPrevPartPartition() {
+	if (currentPartPartition - 1 < 0 || currentPartPartition - 1 >= partPartitions.size())
+		return false;
+
 	currentPartPartition--;
 	return tryDrawCurPartPartition();
 }
