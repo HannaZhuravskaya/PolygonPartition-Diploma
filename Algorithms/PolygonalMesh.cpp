@@ -1561,6 +1561,7 @@ namespace algo {
 
 		do {
 			splitToConvexPolygonsByPermutation(v, 0, usedVertexes, true, Mesh::copy(this), allMeshes);
+			splitToConvexPolygonsByPermutation(v, 0, usedVertexes, false, Mesh::copy(this), allMeshes);
 		} while (Helper::tryNextPermutation(&v));
 
 		return allMeshes;
