@@ -1,0 +1,34 @@
+V: 15, E: 15, F: 1
+numOfVertex: 0, (11.6, 49.4), e: 0, isDeleted: 0, isTemp: 0
+numOfVertex: 1, (9.1, 44), e: 1, isDeleted: 0, isTemp: 0
+numOfVertex: 2, (8.6, 37.2), e: 2, isDeleted: 0, isTemp: 0
+numOfVertex: 3, (10.3, 30.6), e: 3, isDeleted: 0, isTemp: 0
+numOfVertex: 4, (12.9, 23.4), e: 4, isDeleted: 0, isTemp: 0
+numOfVertex: 5, (21.3, 19.2), e: 5, isDeleted: 0, isTemp: 0
+numOfVertex: 6, (21.5, 13), e: 6, isDeleted: 0, isTemp: 0
+numOfVertex: 7, (31.7, 9.7), e: 7, isDeleted: 0, isTemp: 0
+numOfVertex: 8, (44.3, 14.5), e: 8, isDeleted: 0, isTemp: 0
+numOfVertex: 9, (44.1, 23.7), e: 9, isDeleted: 0, isTemp: 0
+numOfVertex: 10, (49.5, 26.7), e: 10, isDeleted: 0, isTemp: 0
+numOfVertex: 11, (49.9, 35), e: 11, isDeleted: 0, isTemp: 0
+numOfVertex: 12, (45.5, 43.7), e: 12, isDeleted: 0, isTemp: 0
+numOfVertex: 13, (31.9, 45.5), e: 13, isDeleted: 0, isTemp: 0
+numOfVertex: 14, (26.9, 51.5), e: 14, isDeleted: 0, isTemp: 0
+numOfEdge: 0, v: 0, f: 0, prev: 14, next: 1, isDeleted: 0, isTemp: 0
+numOfEdge: 1, v: 1, f: 0, prev: 0, next: 2, isDeleted: 0, isTemp: 0
+numOfEdge: 2, v: 2, f: 0, prev: 1, next: 3, isDeleted: 0, isTemp: 0
+numOfEdge: 3, v: 3, f: 0, prev: 2, next: 4, isDeleted: 0, isTemp: 0
+numOfEdge: 4, v: 4, f: 0, prev: 3, next: 5, isDeleted: 0, isTemp: 0
+numOfEdge: 5, v: 5, f: 0, prev: 4, next: 6, isDeleted: 0, isTemp: 0
+numOfEdge: 6, v: 6, f: 0, prev: 5, next: 7, isDeleted: 0, isTemp: 0
+numOfEdge: 7, v: 7, f: 0, prev: 6, next: 8, isDeleted: 0, isTemp: 0
+numOfEdge: 8, v: 8, f: 0, prev: 7, next: 9, isDeleted: 0, isTemp: 0
+numOfEdge: 9, v: 9, f: 0, prev: 8, next: 10, isDeleted: 0, isTemp: 0
+numOfEdge: 10, v: 10, f: 0, prev: 9, next: 11, isDeleted: 0, isTemp: 0
+numOfEdge: 11, v: 11, f: 0, prev: 10, next: 12, isDeleted: 0, isTemp: 0
+numOfEdge: 12, v: 12, f: 0, prev: 11, next: 13, isDeleted: 0, isTemp: 0
+numOfEdge: 13, v: 13, f: 0, prev: 12, next: 14, isDeleted: 0, isTemp: 0
+numOfEdge: 14, v: 14, f: 0, prev: 13, next: 0, isDeleted: 0, isTemp: 0
+numOfFace: 0, e: 0, isDeleted: 0, area: 1208.34, perimeter: 137.449
+15
+0->1->2->3->4->5->6->7->8->9->10->11->12->13->14

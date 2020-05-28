@@ -1,0 +1,18 @@
+V: 7, E: 7, F: 1
+numOfVertex: 0, (15.5, 26), e: 0, isDeleted: 0, isTemp: 0
+numOfVertex: 1, (15.5, 31.4), e: 1, isDeleted: 0, isTemp: 0
+numOfVertex: 2, (19.1, 32.1), e: 2, isDeleted: 0, isTemp: 0
+numOfVertex: 3, (20.1, 39.7), e: 3, isDeleted: 0, isTemp: 0
+numOfVertex: 4, (14.2, 39.1), e: 4, isDeleted: 0, isTemp: 0
+numOfVertex: 5, (8.2, 40), e: 5, isDeleted: 0, isTemp: 0
+numOfVertex: 6, (7.7, 28.7), e: 6, isDeleted: 0, isTemp: 0
+numOfEdge: 0, v: 0, f: 0, prev: 6, next: 1, isDeleted: 0, isTemp: 0
+numOfEdge: 1, v: 1, f: 0, prev: 0, next: 2, isDeleted: 0, isTemp: 0
+numOfEdge: 2, v: 2, f: 0, prev: 1, next: 3, isDeleted: 0, isTemp: 0
+numOfEdge: 3, v: 3, f: 0, prev: 2, next: 4, isDeleted: 0, isTemp: 0
+numOfEdge: 4, v: 4, f: 0, prev: 3, next: 5, isDeleted: 0, isTemp: 0
+numOfEdge: 5, v: 5, f: 0, prev: 4, next: 6, isDeleted: 0, isTemp: 0
+numOfEdge: 6, v: 6, f: 0, prev: 5, next: 0, isDeleted: 0, isTemp: 0
+numOfFace: 0, e: 0, isDeleted: 0, area: 123.405, perimeter: 48.2956
+7
+0->1->2->3->4->5->6

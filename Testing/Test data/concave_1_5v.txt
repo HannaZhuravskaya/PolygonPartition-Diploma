@@ -1,0 +1,14 @@
+V: 5, E: 5, F: 1
+numOfVertex: 0, (22.3, 39.8), e: 0, isDeleted: 0, isTemp: 0
+numOfVertex: 1, (21.8, 26.4), e: 1, isDeleted: 0, isTemp: 0
+numOfVertex: 2, (32.2, 25.8), e: 2, isDeleted: 0, isTemp: 0
+numOfVertex: 3, (35, 38.9), e: 3, isDeleted: 0, isTemp: 0
+numOfVertex: 4, (27.7, 32.5), e: 4, isDeleted: 0, isTemp: 0
+numOfEdge: 0, v: 0, f: 0, prev: 4, next: 1, isDeleted: 0, isTemp: 0
+numOfEdge: 1, v: 1, f: 0, prev: 0, next: 2, isDeleted: 0, isTemp: 0
+numOfEdge: 2, v: 2, f: 0, prev: 1, next: 3, isDeleted: 0, isTemp: 0
+numOfEdge: 3, v: 3, f: 0, prev: 2, next: 4, isDeleted: 0, isTemp: 0
+numOfEdge: 4, v: 4, f: 0, prev: 3, next: 0, isDeleted: 0, isTemp: 0
+numOfFace: 0, e: 0, isDeleted: 0, area: 110.35, perimeter: 56.011
+5
+0->1->2->3->4
